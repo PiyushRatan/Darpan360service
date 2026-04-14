@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { handleIncomingChat, getBotConfig, getChatHistory } = require('../controllers/chatController');
 
-// This route is PUBLIC. The frontend widget will ping it.
+// Public route for widget configuration retrieval
 router.get('/:botId/config', getBotConfig);
 
-// Dedicated route to fetch previous retained messages on tab refresh
+// Fetch historical messages for an existing client session
 router.get('/:botId/history/:clientSessionId', getChatHistory);
 
 router.post('/:botId', handleIncomingChat);

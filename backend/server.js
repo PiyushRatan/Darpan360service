@@ -76,16 +76,16 @@ app.use((err, req, res, next) => {
     next(err);
 });
 
-// Serve the embeddable widget script to the world!
+// Serve the static widget application files
 const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Mount Routes
+// Mount API routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/bots', require('./routes/botRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 
-// Start Background Cron Jobs
+// Initialize background tasks
 const { startCronJobs } = require('./services/cronService');
 startCronJobs();
 
@@ -103,5 +103,5 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
-// Export the Express App for Vercel Serverless Architecture
+// Export for Vercel Serverless Architecture
 module.exports = app;

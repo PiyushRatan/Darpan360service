@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.*
+scratch.js
+saved_frontend_firebase.js
+testing_widget.html
+.vercel/
+

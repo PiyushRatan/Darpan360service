@@ -3,7 +3,7 @@ const router = express.Router();
 const { createBot, getBots, updateBot, deleteBot } = require('../controllers/botController');
 const { protect } = require('../middleware/firebaseAuth');
 
-// All bot routes are private! You must be logged in to manage bots.
+// Bot management routes require authentication
 router.route('/')
     .post(protect, createBot)
     .get(protect, getBots);

@@ -15,16 +15,16 @@ const botSchema = mongoose.Schema({
         default: 'Hello! I am the AI Assistant. How can I help you today?'
     },
     systemContext: {
-        type: String, // Short behavioral context
+        type: String, // System prompt that defines the assistant's behavior
         default: 'You are a helpful assistant.'
     },
     knowledgeBaseText: {
-        type: String, // Massive dump of FAQ/Business info
+        type: String, // Contextual knowledge data for the bot
         default: ''
     },
     primaryColor: {
         type: String,
-        default: '#1E1E1E' // Default to our Builder Dark motif!
+        default: '#1E1E1E' // Default widget theme color
     },
     avatarImgUrl: {
         type: String,
