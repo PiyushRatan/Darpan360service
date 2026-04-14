@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-builder-900 text-gray-200 antialiased selection:bg-accent-500 selection:text-white;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+  /* Enforcing Firm Builder-Style Buttons */
+  .btn-primary {
+    @apply bg-accent-500 text-white font-medium px-4 py-2 rounded shadow-sm hover:bg-accent-600 active:scale-95 transition-all duration-150 flex items-center justify-center;
+  }
+  
+  .btn-secondary {
+    @apply bg-builder-800 text-gray-300 font-medium px-4 py-2 rounded shadow-sm border border-builder-border hover:bg-builder-700 active:scale-95 transition-all duration-150 flex items-center justify-center;
+  }
+
+  /* Clear Input Fields */
+  .input-field {
+    @apply w-full bg-builder-900 border border-builder-border rounded px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-colors duration-150;
+  }
+
+  /* Flat Structured Cards */
+  .card {
+    @apply bg-builder-800 border border-builder-border rounded p-6 shadow-sm;
+  }
+}
