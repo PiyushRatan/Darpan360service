@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon, BookOpenIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon, BookOpenIcon, SparklesIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
 import { secureFetch } from '../utils/api';
@@ -99,6 +99,7 @@ const Dashboard = () => {
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
   const [generatorAnswers, setGeneratorAnswers] = useState(createEmptyGeneratorAnswers);
   const [generatingReference, setGeneratingReference] = useState(false);
+  const [createdBotPrompt, setCreatedBotPrompt] = useState(null);
 
   // Notification State for Copying
   const [copiedId, setCopiedId] = useState(null);
@@ -162,6 +163,7 @@ const Dashboard = () => {
     setDomainDraft('');
     setShowAdvanced(false);
     setGeneratorAnswers(createEmptyGeneratorAnswers());
+    setCreatedBotPrompt(null);
     if (mode === 'edit' && bot) {
       const assistantRole = bot.assistantRole || 'general-assistant';
       const toneOptions = getToneOptions(assistantRole);
@@ -454,17 +456,24 @@ const Dashboard = () => {
     try {
       setSaving(true);
       if (modalMode === 'create') {
-        await secureFetch('/bots', {
+        const createdBot = await secureFetch('/bots', {
           method: 'POST',
           body: JSON.stringify(payload)
         });
+        const createdBotId = createdBot?._id || createdBot?.id;
         pushToast({
           type: 'success',
           title: 'Bot created',
           message: formData.welcomeMessage.trim()
-            ? 'Your chatbot is ready to configure and embed.'
+            ? 'Your chatbot is ready to test.'
             : 'Opening message was generated and your chatbot is ready.'
         });
+        if (createdBotId) {
+          setCreatedBotPrompt({
+            botName: createdBot.botName || payload.botName,
+            url: createHostedChatUrl(createdBotId)
+          });
+        }
       } else if (modalMode === 'edit') {
         await secureFetch(`/bots/${formData.id}`, {
           method: 'PUT',
@@ -477,7 +486,7 @@ const Dashboard = () => {
         });
       }
       setIsModalOpen(false);
-      fetchBots();
+      await fetchBots();
     } catch (error) {
       console.error("Error saving bot:", error);
       pushToast({
@@ -954,6 +963,70 @@ const Dashboard = () => {
                   {saving ? 'Saving...' : modalMode === 'create' ? 'Create' : 'Save Changes'}
                 </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {createdBotPrompt && (
+          <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              className="w-full max-w-md border border-builder-border bg-builder-800 p-5 shadow-2xl sm:p-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="created-bot-title"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-emerald-400/40 bg-emerald-400/10 text-emerald-300">
+                    <CheckCircleIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 id="created-bot-title" className="text-lg font-semibold text-white">Chatbot created</h3>
+                    <p className="mt-2 text-sm leading-6 text-gray-400">
+                      {createdBotPrompt.botName} is ready. Open the hosted chat page to test the welcome message, answers, and domain access.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCreatedBotPrompt(null)}
+                  className="text-gray-500 transition-colors hover:text-white"
+                  aria-label="Close chatbot created confirmation"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-5 border border-builder-border bg-builder-900/70 px-3 py-2 text-xs leading-5 text-gray-400">
+                Hosted chat: <span className="break-all font-mono text-gray-200">{createdBotPrompt.url}</span>
+              </div>
+
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setCreatedBotPrompt(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white"
+                >
+                  Stay on dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const hostedChatUrl = createdBotPrompt.url;
+                    setCreatedBotPrompt(null);
+                    window.location.assign(hostedChatUrl);
+                  }}
+                  className="btn-primary"
+                >
+                  Test hosted chat
+                  <ArrowTopRightOnSquareIcon className="ml-2 h-4 w-4" />
+                </button>
               </div>
             </motion.div>
           </div>
