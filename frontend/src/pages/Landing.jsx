@@ -206,7 +206,7 @@ const IntelligenceCard = ({ card, index }) => (
   <article
     data-stack-card
     data-tilt-card
-    className="group min-h-[260px] border border-builder-border bg-builder-800 p-6 shadow-sm transition-colors hover:border-gray-600 lg:sticky"
+    className="group min-h-[260px] border border-builder-border bg-builder-800 p-6 shadow-sm transition-colors hover:border-gray-600"
     style={{ top: `calc(6rem + ${index * 20}px)`, zIndex: index + 1 }}
   >
     <div className="flex h-full flex-col">
@@ -226,8 +226,8 @@ const IntelligenceCard = ({ card, index }) => (
 );
 
 const LaunchControlSection = () => (
-  <section data-stack-section className="border-b border-builder-border bg-builder-900 px-6 py-16 lg:py-0">
-    <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 lg:min-h-[215vh] lg:grid-cols-[0.82fr_1.18fr]">
+  <section data-stack-section className="overflow-hidden border-b border-builder-border bg-builder-900 px-6 py-16 lg:py-0">
+    <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 lg:min-h-screen lg:grid-cols-[0.82fr_1.18fr]">
       <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
         <Reveal className="max-w-3xl">
           <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
@@ -249,7 +249,7 @@ const LaunchControlSection = () => (
 );
 
 const ClientLaunchSection = () => (
-  <section data-side-section className="relative border-b border-builder-border bg-builder-900 lg:h-[250vh]">
+  <section data-side-section className="relative overflow-hidden border-b border-builder-border bg-builder-900">
     <div className="lg:flex lg:min-h-screen lg:items-center lg:overflow-hidden">
       <div className="mx-auto w-full max-w-7xl px-6 py-16 lg:py-0">
         <div className="mb-10 grid gap-5 lg:grid-cols-[420px_1fr] lg:items-end">
@@ -308,7 +308,7 @@ const ServiceCard = ({ item, index }) => {
   return (
     <article
       data-stack-card
-      className="border border-builder-border bg-builder-800 p-5 shadow-sm transition-colors hover:border-gray-600 lg:sticky"
+      className="border border-builder-border bg-builder-800 p-5 shadow-sm transition-colors hover:border-gray-600"
       style={{ top: `calc(5rem + ${index * 18}px)`, zIndex: index + 1 }}
     >
       <div className="flex items-start gap-4">
@@ -328,8 +328,8 @@ const ServiceCard = ({ item, index }) => {
 };
 
 const ServiceStackSection = () => (
-  <section data-stack-section className="border-y border-builder-border bg-builder-900 py-16 lg:py-0">
-    <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 px-6 lg:min-h-[235vh] lg:grid-cols-[0.78fr_1.22fr]">
+  <section data-stack-section className="overflow-hidden border-y border-builder-border bg-builder-900 py-16 lg:py-0">
+    <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 px-6 lg:min-h-screen lg:grid-cols-[0.78fr_1.22fr]">
       <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
         <Reveal>
           <div className="max-w-2xl">
@@ -357,7 +357,7 @@ const ServiceStackSection = () => (
 );
 
 const WorkflowStorySection = () => (
-  <section data-workflow-section className="border-y border-builder-border bg-builder-900 lg:min-h-[220vh]">
+  <section data-workflow-section className="overflow-hidden border-y border-builder-border bg-builder-900">
     <div data-workflow-pin className="mx-auto grid max-w-7xl gap-10 px-6 py-16 lg:min-h-screen lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-0">
       <div className="space-y-6">
         <Reveal>
@@ -662,17 +662,19 @@ const Landing = () => {
           const cards = gsap.utils.toArray(section.querySelectorAll('[data-stack-card]'));
           gsap.set(cards, {
             autoAlpha: 0,
-            y: (index) => 220 + index * 40,
-            scale: 1.035
+            y: (index) => 96 + index * 18,
+            scale: 1.02
           });
 
           const timeline = gsap.timeline({
             scrollTrigger: {
               trigger: section,
               start: 'top top',
-              end: () => `+=${Math.max(1100, cards.length * 480)}`,
+              end: () => `+=${Math.max(900, cards.length * 400)}`,
               pin: section.querySelector('[data-stack-pin]'),
+              pinSpacing: true,
               scrub: 1,
+              anticipatePin: 1,
               invalidateOnRefresh: true
             }
           });
@@ -686,37 +688,59 @@ const Landing = () => {
               ease: 'power2.out'
             }, index * 0.48);
           });
+
+          if (cards.length > 0) {
+            timeline.to(cards[cards.length - 1], {
+              y: (cards.length - 1) * 12,
+              duration: 0.35,
+              ease: 'none'
+            }, '>');
+          }
         });
 
         const sideSection = root.querySelector('[data-side-section]');
         const track = root.querySelector('[data-horizontal-track]');
         if (sideSection && track) {
-          gsap.to(track, {
-            x: () => {
-              const maxTravel = track.scrollWidth - sideSection.clientWidth + 48;
-              return maxTravel > 0 ? -maxTravel : 0;
-            },
-            ease: 'none',
+          const getTravel = () => Math.max(0, track.scrollWidth - sideSection.clientWidth + 48);
+          const timeline = gsap.timeline({
             scrollTrigger: {
               trigger: sideSection,
               start: 'top top',
-              end: () => `+=${Math.max(1100, track.scrollWidth - sideSection.clientWidth + 700)}`,
+              end: () => `+=${Math.max(700, getTravel() + 300)}`,
               pin: true,
+              pinSpacing: true,
               scrub: 1,
+              anticipatePin: 1,
               invalidateOnRefresh: true
             }
+          });
+
+          timeline.to(track, {
+            x: () => {
+              const maxTravel = getTravel();
+              return maxTravel > 0 ? -maxTravel : 0;
+            },
+            ease: 'none',
+            duration: 1
+          }).to(track, {
+            x: () => -getTravel(),
+            duration: 0.22,
+            ease: 'none'
           });
         }
 
         const workflowSection = root.querySelector('[data-workflow-section]');
         const workflowPath = root.querySelector('[data-workflow-path]');
         if (workflowSection && workflowPath) {
+          const workflowNodes = gsap.utils.toArray(workflowSection.querySelectorAll('[data-workflow-node]'));
+          const workflowAnswer = workflowSection.querySelector('[data-workflow-answer]');
+          const workflowActions = gsap.utils.toArray(workflowSection.querySelectorAll('[data-workflow-action]'));
           const pathLength = workflowPath.getTotalLength();
           gsap.set(workflowPath, {
             strokeDasharray: pathLength,
             strokeDashoffset: pathLength
           });
-          gsap.set('[data-workflow-node], [data-workflow-answer], [data-workflow-action]', {
+          gsap.set([...workflowNodes, workflowAnswer, ...workflowActions].filter(Boolean), {
             autoAlpha: 0,
             scale: 0.78,
             y: 18
@@ -726,17 +750,23 @@ const Landing = () => {
             scrollTrigger: {
               trigger: workflowSection,
               start: 'top top',
-              end: '+=1350',
+              end: '+=1150',
               pin: workflowSection.querySelector('[data-workflow-pin]'),
+              pinSpacing: true,
               scrub: 1,
+              anticipatePin: 1,
               invalidateOnRefresh: true
             }
           })
             .to(workflowPath, { strokeDashoffset: 0, duration: 1.4, ease: 'none' })
-            .to('[data-workflow-node]', { autoAlpha: 1, scale: 1, y: 0, duration: 0.5, stagger: 0.22, ease: 'back.out(1.4)' }, 0.12)
-            .to('[data-workflow-answer]', { autoAlpha: 1, scale: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.92)
-            .to('[data-workflow-action]', { autoAlpha: 1, scale: 1, y: 0, duration: 0.35, stagger: 0.12, ease: 'power2.out' }, 1.12);
+            .to(workflowNodes, { autoAlpha: 1, scale: 1, y: 0, duration: 0.5, stagger: 0.22, ease: 'back.out(1.4)' }, 0.12)
+            .to(workflowAnswer, { autoAlpha: 1, scale: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.92)
+            .to(workflowActions, { autoAlpha: 1, scale: 1, y: 0, duration: 0.35, stagger: 0.12, ease: 'power2.out' }, 1.12)
+            .to(workflowActions, { y: 0, duration: 0.28, ease: 'none' }, '>');
         }
+
+        const refreshFrame = requestAnimationFrame(() => ScrollTrigger.refresh());
+        return () => cancelAnimationFrame(refreshFrame);
       });
 
       mm.add('(pointer: fine)', () => {

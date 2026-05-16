@@ -1035,26 +1035,6 @@ const Dashboard = () => {
 
               <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5">
               <div className="space-y-4 sm:space-y-5">
-                <div className="grid gap-2 text-xs font-semibold text-gray-400 sm:grid-cols-4">
-                  {SETUP_SECTIONS.map((section, index) => {
-                    const isLocked = modalMode === 'create' && index > unlockedSetupIndex;
-                    return (
-                      <button
-                        key={section.id}
-                        type="button"
-                        onClick={() => handleOpenSetupSection(section.id)}
-                        className={`flex items-center justify-between gap-2 border px-3 py-2 text-left transition-colors ${activeSetupSection === section.id ? 'border-accent-500/50 bg-accent-500/10 text-white' : 'border-builder-border bg-builder-900/70 hover:border-gray-600 hover:text-white'} ${isLocked ? 'opacity-50' : ''}`}
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-builder-border text-[10px] text-accent-500">{index + 1}</span>
-                          <span className="truncate">{section.label}</span>
-                        </span>
-                        <ChevronDownIcon className={`h-3.5 w-3.5 shrink-0 transition-transform ${activeSetupSection === section.id ? 'rotate-180' : ''}`} />
-                      </button>
-                    );
-                  })}
-                </div>
-
                 {renderSetupSection({
                   id: 'identity',
                   label: 'Identity',
