@@ -126,6 +126,76 @@ ${Object.entries(answers).map(([key, value]) => `- ${key}: ${value || ''}`).join
     return { ...createFallbackSetupDraft({ assistantRole, languageStyle, tone, answers }), source: 'fallback' };
 };
 
+const AI_SERVICE_PUBLIC_MESSAGE = 'A service-side AI error occurred. Please try again in a moment.';
+
+const getProviderErrorStatus = (error) => {
+    const status = Number(
+        error?.status
+        || error?.statusCode
+        || error?.response?.status
+        || error?.cause?.status
+    );
+
+    return Number.isFinite(status) ? status : null;
+};
+
+const getProviderErrorCode = (error) => (
+    error?.code
+    || error?.error?.code
+    || error?.response?.data?.error?.code
+    || error?.cause?.code
+    || 'UNKNOWN'
+);
+
+const getProviderErrorMessage = (error) => (
+    String(
+        error?.message
+        || error?.error?.message
+        || error?.response?.data?.error?.message
+        || 'Unknown provider error'
+    )
+        .replace(/\s+/g, ' ')
+        .slice(0, 300)
+);
+
+const classifyProviderError = (error) => {
+    const status = getProviderErrorStatus(error);
+    const message = getProviderErrorMessage(error);
+    const normalizedMessage = message.toLowerCase();
+
+    if (status === 429 || normalizedMessage.includes('429') || normalizedMessage.includes('rate limit') || normalizedMessage.includes('quota')) {
+        return 'rate_limit';
+    }
+
+    if ([400, 401, 403, 404].includes(status)
+        || normalizedMessage.includes('api key')
+        || normalizedMessage.includes('apikey')
+        || normalizedMessage.includes('unauthorized')
+        || normalizedMessage.includes('permission')
+        || normalizedMessage.includes('forbidden')
+        || normalizedMessage.includes('invalid key')) {
+        return 'api_key_or_config';
+    }
+
+    return 'provider_error';
+};
+
+const logProviderFailure = ({ provider, slot, kind, status, code, message }) => {
+    const prefix = kind === 'rate_limit' ? 'warn' : 'error';
+    console[prefix](
+        `[AI Engine] ${provider} slot #${slot} failed. kind=${kind}; status=${status || 'unknown'}; code=${code}; message="${message}"`
+    );
+};
+
+const createAiServiceError = (code, failures) => {
+    const error = new Error(AI_SERVICE_PUBLIC_MESSAGE);
+    error.publicCode = code;
+    error.publicMessage = AI_SERVICE_PUBLIC_MESSAGE;
+    error.statusCode = code === 'AI_PROVIDER_RATE_LIMITED' ? 429 : 503;
+    error.failures = failures;
+    return error;
+};
+
 /**
  * The Smart Rotator Engine
  * Handles routing messages to Free AI providers and catches Rate Limit errors (HTTP 429)
@@ -147,8 +217,7 @@ const getAiResponse = async (botConfig, history, newMessage) => {
     const GEMINI_KEYS = getNumberedEnvValues('GEMINI_KEY');
     const GROQ_KEYS = getNumberedEnvValues('GROQ_KEY');
 
-    let geminiFailed = false;
-    let geminiErrorMessage = "";
+    const providerFailures = [];
 
     // Attempt the cascading fallback loop for Gemini First
     for (let i = 0; i < GEMINI_KEYS.length; i++) {
@@ -157,30 +226,27 @@ const getAiResponse = async (botConfig, history, newMessage) => {
             const response = await generateGeminiResponse(GEMINI_KEYS[i], fullContext, history, newMessage);
             return response; // Success! Return immediately.
         } catch (error) {
-            // Check if it's a Rate Limit error (429) or Quota Exceeded
-            if (error.status === 429 || Math.abs(error.status) === 429 || (error.message && error.message.includes('429'))) {
-                console.warn(`[AI Engine] Warning: Gemini Slot #${i + 1} hit a 429 Rate Limit!`);
-                geminiFailed = true;
-            } else {
-                console.error("[AI Engine] Critical Generic API failure for Gemini:", error);
-                if (error.status === 404 || (error.message && error.message.includes('404'))) {
-                    return ` API Gateway Error (Slot ${i+1}): Your Gemini API Key is structurally valid but returned a 404 Not Found. You likely pasted a Firebase Web Key or your project does not have the 'Generative Language API' enabled. Please generate a dedicated key at https://aistudio.google.com/app/apikey.`;
-                } else if (error.status === 400 || (error.message && error.message.includes('400'))) {
-                    return ` API Gateway Error (Slot ${i+1}): Your Gemini API Key is invalid (400 Bad Request).`;
-                }
-                geminiFailed = true;
-                geminiErrorMessage = error.message;
-            }
+            const failure = {
+                provider: 'Gemini',
+                slot: i + 1,
+                kind: classifyProviderError(error),
+                status: getProviderErrorStatus(error),
+                code: getProviderErrorCode(error),
+                message: getProviderErrorMessage(error)
+            };
+            providerFailures.push(failure);
+            logProviderFailure(failure);
         }
     }
 
     // If Gemini loop completely failed, fall back to Groq!
-    if (geminiFailed || GEMINI_KEYS.length === 0) {
-        if (GROQ_KEYS.length === 0) {
-            console.warn("[AI Engine] Missing both Gemini and Groq API keys in the environment! Returning Mock response safely.");
-            return `[Mock Offline Mode] I see you provided no valid Gemini or Groq API keys in backend/.env. The Gemini keys threw an explicit failure: ${geminiErrorMessage || 'None provided'}. Please add a real Llama3 Groq fallback key or correct your Google API keys!`;
-        }
+    if (GEMINI_KEYS.length === 0) {
+        console.warn('[AI Engine] Gemini key pool is empty. Falling back to Groq if configured.');
+    }
 
+    if (GROQ_KEYS.length === 0) {
+        console.error('[AI Engine] Groq key pool is empty.');
+    } else {
         console.log(`[AI Engine] Primary models failed! Hot-swapping to GROQ Llama-3...`);
 
         for (let i = 0; i < GROQ_KEYS.length; i++) {
@@ -189,12 +255,31 @@ const getAiResponse = async (botConfig, history, newMessage) => {
                 const response = await generateGroqResponse(GROQ_KEYS[i], fullContext, history, newMessage);
                 return response;
             } catch (groqError) {
-                console.error(`[AI Engine] Critical Groq API failure for Slot #${i + 1}:`, groqError);
+                const failure = {
+                    provider: 'Groq',
+                    slot: i + 1,
+                    kind: classifyProviderError(groqError),
+                    status: getProviderErrorStatus(groqError),
+                    code: getProviderErrorCode(groqError),
+                    message: getProviderErrorMessage(groqError)
+                };
+                providerFailures.push(failure);
+                logProviderFailure(failure);
             }
         }
-
-        throw new Error("Extreme Load: Both Gemini and Groq fallback pools have failed.");
     }
+
+    if (GEMINI_KEYS.length === 0 && GROQ_KEYS.length === 0) {
+        console.error('[AI Engine] No valid Gemini or Groq API keys are configured. Chat response blocked with public service error.');
+        throw createAiServiceError('AI_KEYS_MISSING', providerFailures);
+    }
+
+    const allFailuresAreRateLimits = providerFailures.length > 0
+        && providerFailures.every((failure) => failure.kind === 'rate_limit');
+    throw createAiServiceError(
+        allFailuresAreRateLimits ? 'AI_PROVIDER_RATE_LIMITED' : 'AI_SERVICE_UNAVAILABLE',
+        providerFailures
+    );
 };
 
 module.exports = { getAiResponse, getNumberedEnvValues, generateSetupDraft };

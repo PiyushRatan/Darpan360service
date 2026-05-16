@@ -12,6 +12,11 @@ const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_STORED_MESSAGES = 40;
 const SESSION_ID_PATTERN = /^sess_[a-f0-9]{32}$/;
+const AI_SERVICE_PUBLIC_MESSAGE = 'A service-side AI error occurred. Please try again in a moment.';
+
+const getRetryAfterSeconds = (resetAt) => (
+    Math.max(Math.ceil((resetAt.getTime() - Date.now()) / 1000), 1)
+);
 
 const validateBotAccess = (req, accessConfig) => {
     const sourceOrigin = getRequestSourceOrigin(req);
@@ -101,12 +106,25 @@ const handleIncomingChat = async (req, res) => {
 
         const quota = await BotMessageQuota.consumeBotMessageQuota(botId);
         if (!quota.allowed) {
-            res.setHeader('Retry-After', Math.max(Math.ceil((quota.resetAt.getTime() - Date.now()) / 1000), 1));
+            const retryAfterSeconds = getRetryAfterSeconds(quota.resetAt);
+            const sourceOrigin = getRequestSourceOrigin(req) || 'unknown';
+            console.warn(
+                `[Bot Rate Limit] botId=${botId}; session=${clientSessionId}; source=${sourceOrigin}; ` +
+                `limit=${quota.limit}/${quota.windowSeconds}s; retryAfter=${retryAfterSeconds}s`
+            );
+            res.setHeader('Retry-After', retryAfterSeconds);
             return res.status(429).json({
-                error: `This chatbot has reached its ${quota.limit} messages per minute limit. Please try again shortly.`,
-                retryAfter: quota.resetAt
+                code: 'BOT_MESSAGE_RATE_LIMITED',
+                error: `This chatbot has reached its current limit of ${quota.limit} messages per minute across all visitor sessions. Please try again in ${retryAfterSeconds} seconds.`,
+                limit: quota.limit,
+                windowSeconds: quota.windowSeconds,
+                retryAfterSeconds,
+                resetAt: quota.resetAt.toISOString()
             });
         }
+        res.setHeader('X-Bot-RateLimit-Limit', quota.limit);
+        res.setHeader('X-Bot-RateLimit-Remaining', quota.remaining);
+        res.setHeader('X-Bot-RateLimit-Reset', quota.resetAt.toISOString());
 
         // 2. Locate or Create the Chat Session tracking this specific user
         let session = await ChatSession.findOne({ botId, clientSessionId });
@@ -133,8 +151,20 @@ const handleIncomingChat = async (req, res) => {
         try {
             aiTextResponse = await getAiResponse(bot, history, cleanMessage);
         } catch (aiError) {
-            return res.status(503).json({ 
-                error: "The AI is currently resting. Please try again in 10 seconds."
+            const statusCode = aiError.statusCode || 503;
+            const publicCode = aiError.publicCode || 'AI_SERVICE_UNAVAILABLE';
+            console.error('[Chat AI Service Error]', {
+                botId,
+                session: clientSessionId,
+                code: publicCode,
+                statusCode,
+                providerFailures: Array.isArray(aiError.failures) ? aiError.failures.length : 0,
+                message: aiError.message
+            });
+            return res.status(statusCode).json({
+                code: publicCode,
+                error: aiError.publicMessage || AI_SERVICE_PUBLIC_MESSAGE,
+                retryAfterSeconds: statusCode === 429 ? 60 : 15
             });
         }
 
@@ -155,7 +185,10 @@ const handleIncomingChat = async (req, res) => {
 
     } catch (error) {
         console.error("Chat Controller Error:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({
+            code: 'CHAT_SERVER_ERROR',
+            error: 'A service-side chat error occurred. Please try again shortly.'
+        });
     }
 };
 

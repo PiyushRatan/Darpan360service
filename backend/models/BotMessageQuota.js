@@ -5,6 +5,7 @@ const botRateLimits = db.collection('botMessageRateLimits');
 
 const DEFAULT_LIMIT = 10;
 const WINDOW_MS = 60 * 1000;
+const WINDOW_SECONDS = WINDOW_MS / 1000;
 const CLEANUP_AFTER_MS = 10 * WINDOW_MS;
 
 const getLimit = () => {
@@ -33,6 +34,7 @@ const consumeBotMessageQuota = async (botId, now = new Date()) => {
                 allowed: false,
                 limit,
                 remaining: 0,
+                windowSeconds: WINDOW_SECONDS,
                 resetAt
             };
         }
@@ -51,6 +53,7 @@ const consumeBotMessageQuota = async (botId, now = new Date()) => {
             allowed: true,
             limit,
             remaining: Math.max(limit - count - 1, 0),
+            windowSeconds: WINDOW_SECONDS,
             resetAt
         };
     });
@@ -75,5 +78,7 @@ const deleteExpired = async (now = new Date()) => {
 
 module.exports = {
     consumeBotMessageQuota,
-    deleteExpired
+    deleteExpired,
+    getLimit,
+    WINDOW_SECONDS
 };

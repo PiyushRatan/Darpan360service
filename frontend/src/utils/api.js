@@ -46,6 +46,11 @@ export const apiFetch = async (endpoint, options = {}) => {
     const error = new Error(details.length > 0 ? `${message} ${details.join(' ')}` : message);
     error.status = response.status;
     error.details = details;
+    error.code = data.code;
+    error.limit = data.limit;
+    error.windowSeconds = data.windowSeconds;
+    error.retryAfterSeconds = data.retryAfterSeconds;
+    error.resetAt = data.resetAt;
     throw error;
   }
 

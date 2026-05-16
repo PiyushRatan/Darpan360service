@@ -12,6 +12,17 @@ const {
 dotenv.config();
 
 const app = express();
+const CHAT_ROUTE_LIMIT_PER_MINUTE = 20;
+const AUTH_ROUTE_LIMIT_PER_MINUTE = 60;
+const LIMIT_WINDOW_MS = 60 * 1000;
+
+const getRateLimitRetryAfterSeconds = (req) => {
+    const resetTime = req.rateLimit?.resetTime;
+    if (resetTime instanceof Date) {
+        return Math.max(Math.ceil((resetTime.getTime() - Date.now()) / 1000), 1);
+    }
+    return 60;
+};
 
 // Middleware
 app.disable('x-powered-by');
@@ -33,16 +44,30 @@ app.use((err, req, res, next) => {
 });
 
 const chatLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: 20,
+    windowMs: LIMIT_WINDOW_MS,
+    limit: CHAT_ROUTE_LIMIT_PER_MINUTE,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { error: 'Too many chat requests. Please slow down and try again shortly.' }
+    handler: (req, res) => {
+        const retryAfterSeconds = getRateLimitRetryAfterSeconds(req);
+        console.warn(
+            `[Route Rate Limit] /api/chat limit hit. ip=${req.ip}; path=${req.originalUrl}; ` +
+            `limit=${CHAT_ROUTE_LIMIT_PER_MINUTE}/60s; retryAfter=${retryAfterSeconds}s`
+        );
+        res.setHeader('Retry-After', retryAfterSeconds);
+        res.status(429).json({
+            code: 'CHAT_ROUTE_RATE_LIMITED',
+            error: `Too many chat requests from this connection. Current limit is ${CHAT_ROUTE_LIMIT_PER_MINUTE} requests per minute. Please try again in ${retryAfterSeconds} seconds.`,
+            limit: CHAT_ROUTE_LIMIT_PER_MINUTE,
+            windowSeconds: 60,
+            retryAfterSeconds
+        });
+    }
 });
 
 const authLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    limit: 60,
+    windowMs: LIMIT_WINDOW_MS,
+    limit: AUTH_ROUTE_LIMIT_PER_MINUTE,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     message: { error: 'Too many auth requests. Please try again shortly.' }

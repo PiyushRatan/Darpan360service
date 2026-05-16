@@ -49,6 +49,37 @@ const appendSourceOrigin = (endpoint, sourceOrigin) => {
   return `${endpoint}${separator}sourceOrigin=${encodeURIComponent(sourceOrigin)}`;
 };
 
+const getChatFailureMessage = (error) => {
+  const retryText = error?.retryAfterSeconds
+    ? ` Please try again in ${error.retryAfterSeconds} seconds.`
+    : ' Please try again shortly.';
+
+  if (error?.code === 'BOT_MESSAGE_RATE_LIMITED') {
+    if (error.message) return error.message;
+    return error.limit && error.windowSeconds
+      ? `This bot is currently limited to ${error.limit} messages every ${error.windowSeconds} seconds across all visitors.${retryText}`
+      : `This chatbot is receiving too many messages right now.${retryText}`;
+  }
+
+  if (error?.code === 'CHAT_ROUTE_RATE_LIMITED') {
+    return error.message || `Too many chat requests from this connection.${retryText}`;
+  }
+
+  if (error?.code === 'AI_PROVIDER_RATE_LIMITED') {
+    return `The AI service is temporarily rate-limited.${retryText}`;
+  }
+
+  if (error?.code === 'AI_KEYS_MISSING' || error?.code === 'AI_SERVICE_UNAVAILABLE' || error?.status >= 500) {
+    return error.message || `A service-side AI error occurred.${retryText}`;
+  }
+
+  if (error?.status === 429) {
+    return error.message || `This chatbot is receiving too many messages right now.${retryText}`;
+  }
+
+  return error?.message || 'The chatbot could not answer right now.';
+};
+
 const postWidgetConfig = (botId, config) => {
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({
@@ -161,10 +192,14 @@ const HostedChat = () => {
 
       setMessages(prev => [...prev, { role: 'model', content: data.response }]);
     } catch (error) {
-      const message = error.status === 429
-        ? 'This chatbot is receiving too many messages right now. Please try again in a minute.'
-        : error.message || 'The chatbot could not answer right now.';
-      setMessages(prev => [...prev, { role: 'model', content: message }]);
+      console.error("Chat response error:", {
+        code: error.code,
+        status: error.status,
+        limit: error.limit,
+        retryAfterSeconds: error.retryAfterSeconds,
+        message: error.message
+      });
+      setMessages(prev => [...prev, { role: 'model', content: getChatFailureMessage(error) }]);
     } finally {
       setIsTyping(false);
     }
