@@ -7,6 +7,28 @@ import { secureFetch } from '../utils/api';
 import { auth } from '../config/firebase';
 import { SubPageLoader } from '../components/Loaders';
 
+const trimTrailingSlash = (value) => (value || '').replace(/\/$/, '');
+
+const escapeHtmlAttribute = (value) => String(value || '')
+  .replace(/&/g, '&amp;')
+  .replace(/"/g, '&quot;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;');
+
+const getFrontendBaseUrl = () => (
+  trimTrailingSlash(import.meta.env.VITE_FRONTEND_URL || globalThis.location?.origin || 'http://localhost:5173')
+);
+
+const createHostedChatUrl = (botId) => `${getFrontendBaseUrl()}/chat/${botId}`;
+
+const createEmbedScript = (bot) => {
+  const avatarAttribute = bot.avatarImgUrl
+    ? ` data-avatar-url="${escapeHtmlAttribute(bot.avatarImgUrl)}"`
+    : '';
+
+  return `<script src="${getFrontendBaseUrl()}/widget.js" data-bot-id="${escapeHtmlAttribute(bot._id)}"${avatarAttribute} crossorigin="anonymous"></script>`;
+};
+
 const Dashboard = () => {
   const { currentUser, dbUser } = useAuth();
   const navigate = useNavigate();
@@ -158,7 +180,7 @@ const Dashboard = () => {
     if (formData.avatarImgUrl.trim()) {
       try {
         new URL(formData.avatarImgUrl.trim());
-      } catch (error) {
+      } catch {
         pushToast({
           type: 'error',
           title: 'Invalid avatar URL',
@@ -432,14 +454,14 @@ const Dashboard = () => {
                 <div className="flex gap-4">
                   <button 
                     className="text-accent-500 hover:text-accent-600 flex items-center gap-2 text-sm font-bold transition-colors"
-                    onClick={() => handleCopy(`${import.meta.env.VITE_FRONTEND_URL}/chat/${bot._id}`, bot._id, 'link')}
+                    onClick={() => handleCopy(createHostedChatUrl(bot._id), bot._id, 'link')}
                   >
                     <CodeBracketIcon className="w-4 h-4" /> 
                     {copiedId === bot._id && copiedType === 'link' ? "Copied Link!" : "Web Link"}
                   </button>
                   <button 
                     className="text-accent-500 hover:text-accent-600 flex items-center gap-2 text-sm font-bold transition-colors"
-                    onClick={() => handleCopy(`<script src="${import.meta.env.VITE_FRONTEND_URL}/widget.js" data-bot-id="${bot._id}"></script>`, bot._id, 'embed')}
+                    onClick={() => handleCopy(createEmbedScript(bot), bot._id, 'embed')}
                   >
                     <CodeBracketIcon className="w-4 h-4" /> 
                     {copiedId === bot._id && copiedType === 'embed' ? "Copied Script!" : "Copy Embed"}

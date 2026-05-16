@@ -1,6 +1,42 @@
 {
   "hosting": {
     "public": "dist",
+    "headers": [
+      {
+        "source": "/widget.js",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Cross-Origin-Resource-Policy",
+            "value": "cross-origin"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300, s-maxage=300"
+          }
+        ]
+      },
+      {
+        "source": "/logo.png",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Cross-Origin-Resource-Policy",
+            "value": "cross-origin"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400"
+          }
+        ]
+      }
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

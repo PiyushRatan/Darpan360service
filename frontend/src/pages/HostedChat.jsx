@@ -11,6 +11,18 @@ const createSessionId = () => {
   return `sess_${Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')}`;
 };
 
+const postWidgetConfig = (botId, config) => {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: 'DARPAN_WIDGET_CONFIG',
+      botId,
+      botName: config.name,
+      avatarImgUrl: config.avatar,
+      primaryColor: config.color
+    }, '*');
+  }
+};
+
 const HostedChat = () => {
   const { botId } = useParams();
   const [messages, setMessages] = useState([
@@ -37,11 +49,14 @@ const HostedChat = () => {
       try {
         const configData = await apiFetch(`/chat/${botId}/config`);
 
-        setBotConfig({
+        const nextConfig = {
           name: configData.botName || "AI Assistant",
           color: configData.primaryColor || "#2563EB", 
           avatar: configData.avatarImgUrl || ""
-        });
+        };
+
+        setBotConfig(nextConfig);
+        postWidgetConfig(botId, nextConfig);
 
         // Config is valid! Now pull their past messages if any exist
         const historyData = await apiFetch(`/chat/${botId}/history/${storedSession}`);
@@ -87,7 +102,16 @@ const HostedChat = () => {
 
       // If this is the first real message, the backend returns the actual botName/avatar
       if (data.botName) {
-        setBotConfig(prev => ({ ...prev, name: data.botName, avatar: data.avatarImgUrl }));
+        setBotConfig(prev => {
+          const nextConfig = {
+            ...prev,
+            name: data.botName,
+            avatar: data.avatarImgUrl,
+            color: data.primaryColor || prev?.color
+          };
+          postWidgetConfig(botId, nextConfig);
+          return nextConfig;
+        });
       }
 
       setMessages(prev => [...prev, { role: 'model', content: data.response }]);

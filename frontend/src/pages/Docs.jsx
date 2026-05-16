@@ -48,11 +48,11 @@ const operationRows = [
   ['Brand color and avatar', 'Basic client-facing styling for the chat header and widget.']
 ];
 
-const InfoCard = ({ icon: Icon, title, children }) => (
+const InfoCard = ({ icon, title, children }) => (
   <div className="border border-builder-border bg-builder-800 p-5">
     <div className="flex items-start gap-3">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
-        <Icon className="h-5 w-5" />
+        {React.createElement(icon, { className: 'h-5 w-5' })}
       </div>
       <div>
         <h3 className="text-sm font-semibold text-white">{title}</h3>
@@ -191,7 +191,9 @@ const Docs = () => {
                 </div>
                 <CodeBlock>{`<script
   src="https://your-domain.com/widget.js"
-  data-bot-id="CLIENT_BOT_ID">
+  data-bot-id="CLIENT_BOT_ID"
+  data-avatar-url="https://client-domain.com/logo.png"
+  crossorigin="anonymous">
 </script>`}</CodeBlock>
               </div>
             </div>

@@ -118,10 +118,10 @@ const Landing = () => {
               </p>
             </div>
             <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {deliveryItems.map(({ icon: Icon, title, text }) => (
+              {deliveryItems.map(({ icon, title, text }) => (
                 <article key={title} className="border border-builder-border bg-builder-800 p-5">
                   <div className="flex h-10 w-10 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
-                    <Icon className="h-5 w-5" />
+                    {React.createElement(icon, { className: 'h-5 w-5' })}
                   </div>
                   <h3 className="mt-5 text-base font-semibold text-white">{title}</h3>
                   <p className="mt-3 text-sm leading-6 text-gray-400">{text}</p>

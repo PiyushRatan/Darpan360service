@@ -1,17 +1,19 @@
 /**
  * Chatbot Integration Platform - IFrame Injector
  * Users will place this script on their website:
- * <script src="https://our-api.com/widget.js" data-bot-id="12345"></script>
+ * <script src="https://your-frontend.com/widget.js" data-bot-id="12345" data-avatar-url="https://client.com/logo.png" crossorigin="anonymous"></script>
  */
 
 (function() {
-    // 1. Find the script tag that loaded this file to extract the Bot ID
+    // 1. Find the script tag that loaded this file to extract runtime settings.
     const scripts = document.getElementsByTagName('script');
     let botId = null;
+    let currentScript = document.currentScript;
     
     // Look for our specific script to grab the data-bot-id attribute
     for (let script of scripts) {
         if (script.src.includes('widget.js') && script.hasAttribute('data-bot-id')) {
+            currentScript = script;
             botId = script.getAttribute('data-bot-id');
             break;
         }
@@ -22,16 +24,31 @@
         return;
     }
 
-    // 2. We dynamically calculate the IFrame URL based on where THIS specific widget.js script is hosted!
-    // This allows seamless local testing (localhost:5173/chat/1) alongside live Vercel/Firebase deploys (domain.com/chat/1)
-    const scriptSrc = document.currentScript ? document.currentScript.src : 'https://darpan360ai.web.app/widget.js'; // Fallback
+    // 2. Dynamically calculate the chat URL from where this widget script is hosted.
+    // This allows local testing and live deploys to use the same script file.
+    const scriptSrc = currentScript ? currentScript.src : 'https://darpan360ai.web.app/widget.js';
     const domainOrigin = new URL(scriptSrc).origin;
     const iframeUrl = `${domainOrigin}/chat/${botId}`;
-    const logoUrl = `${domainOrigin}/hero.png`;
+    const defaultLogoUrl = `${domainOrigin}/logo.png`;
+    const configuredAvatarUrl = currentScript?.getAttribute('data-avatar-url') || '';
+
+    const isValidImageUrl = (value) => {
+        if (!value || typeof value !== 'string') return false;
+
+        try {
+            const parsed = new URL(value);
+            return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+        } catch {
+            return false;
+        }
+    };
 
     // 3. Create the Floating Action Button (FAB)
     const button = document.createElement('button');
-    button.innerHTML = `<img src="${logoUrl}" alt="Open chat" style="width: 32px; height: 32px; object-fit: contain;">`;
+    button.type = 'button';
+    button.setAttribute('aria-label', 'Open chat');
+    button.innerHTML = `<img src="${defaultLogoUrl}" alt="" referrerpolicy="no-referrer" style="width: 32px; height: 32px; object-fit: contain;">`;
+    const buttonImage = button.querySelector('img');
     button.style.cssText = `
         position: fixed;
         bottom: 20px;
@@ -96,7 +113,7 @@
     loader.innerHTML = `
         <div style="height: 68px; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #2a2a2a; background: #181818;">
             <div style="width: 36px; height: 36px; border-radius: 50%; background: #262626; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                <img src="${logoUrl}" alt="" style="width: 25px; height: 25px; object-fit: contain; opacity: .82;">
+                <img src="${defaultLogoUrl}" alt="" referrerpolicy="no-referrer" style="width: 25px; height: 25px; object-fit: contain; opacity: .82;">
             </div>
             <div style="display: grid; gap: 7px; width: 148px;">
                 <span style="height: 9px; width: 118px; border-radius: 999px; background: #2d2d2d; animation: darpanWidgetPulse 1.4s ease-in-out infinite;"></span>
@@ -126,9 +143,26 @@
             </div>
         </div>
     `;
+    const loaderImage = loader.querySelector('img');
+
+    const setWidgetImage = (imageUrl) => {
+        const nextImageUrl = isValidImageUrl(imageUrl) ? imageUrl : defaultLogoUrl;
+
+        [buttonImage, loaderImage].forEach((image) => {
+            if (!image) return;
+            image.onerror = () => {
+                image.onerror = null;
+                image.src = defaultLogoUrl;
+            };
+            image.src = nextImageUrl;
+        });
+    };
+    setWidgetImage(configuredAvatarUrl);
 
     const iframe = document.createElement('iframe');
     iframe.src = iframeUrl;
+    iframe.title = 'Darpan360 chat';
+    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
     iframe.style.cssText = `
         width: 100%;
         height: 100%;
@@ -145,6 +179,17 @@
     iframeContainer.appendChild(iframe);
     document.body.appendChild(button);
     document.body.appendChild(iframeContainer);
+
+    window.addEventListener('message', (event) => {
+        if (event.origin !== domainOrigin || !event.data || event.data.type !== 'DARPAN_WIDGET_CONFIG') return;
+        if (String(event.data.botId) !== String(botId)) return;
+
+        setWidgetImage(event.data.avatarImgUrl || configuredAvatarUrl);
+
+        if (event.data.botName) {
+            button.setAttribute('aria-label', `Open ${event.data.botName} chat`);
+        }
+    });
 
     // 5. Toggle Logic
     let isOpen = false;
