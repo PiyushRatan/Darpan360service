@@ -13,6 +13,7 @@ import {
 import { SEO } from '../utils/seo';
 
 const githubRepoUrl = import.meta.env.VITE_GITHUB_REPO_URL || 'https://github.com/PiyushRatan/Darpan360service';
+const creatorCreditUrl = 'https://piyushratan.in/work/darpan360';
 
 const sections = [
   { id: 'overview', label: 'Overview' },
@@ -238,6 +239,20 @@ const Docs = () => {
           </section>
         </div>
       </main>
+
+      <footer className="border-t border-builder-border bg-builder-900 py-6">
+        <div className="mx-auto max-w-7xl px-6 text-xs text-gray-500">
+          Darpan360 service guide.
+          <a
+            href={creatorCreditUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="ml-2 text-gray-400 transition-colors hover:text-white"
+          >
+            Credit: Piyush Ratan.
+          </a>
+        </div>
+      </footer>
     </div>
   );
 };

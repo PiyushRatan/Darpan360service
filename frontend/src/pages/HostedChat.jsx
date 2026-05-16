@@ -12,6 +12,7 @@ const createSessionId = () => {
 };
 
 const getDefaultAvatarUrl = () => `${globalThis.location?.origin || ''}/logo.png`;
+const creatorCreditUrl = 'https://piyushratan.in/work/darpan360';
 
 const resolveAvatarUrl = (avatarUrl) => {
   if (!avatarUrl) return getDefaultAvatarUrl();
@@ -261,9 +262,14 @@ const HostedChat = () => {
           </button>
         </form>
         {/* Attribution */}
-        <div className="text-center mt-2 pb-1">
-          <a href="/" target="_blank" className="text-[10px] uppercase font-bold tracking-widest text-gray-500 hover:text-accent-500 transition-colors">
-            Powered by Darpan360
+        <div className="mt-2 pb-1 text-center">
+          <a
+            href={creatorCreditUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] font-bold uppercase tracking-widest text-gray-500 transition-colors hover:text-accent-500"
+          >
+            Powered by Darpan360 · Piyush Ratan
           </a>
         </div>
       </div>

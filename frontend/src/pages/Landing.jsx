@@ -55,6 +55,8 @@ const clientChecklist = [
   'Approved website domains'
 ];
 
+const creatorCreditUrl = 'https://piyushratan.in/work/darpan360';
+
 const getInitials = (user) => {
   const source = user?.displayName || user?.email || 'Operator';
   return source
@@ -286,7 +288,17 @@ const Landing = () => {
 
       <footer className="border-t border-builder-border bg-builder-900 py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
-          <p>Darpan360 managed AI chatbot deployments.</p>
+          <p>
+            Darpan360 managed AI chatbot deployments.
+            <a
+              href={creatorCreditUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-2 text-gray-400 transition-colors hover:text-white"
+            >
+              Built by Piyush Ratan.
+            </a>
+          </p>
           <div className="flex gap-4">
             <Link to="/docs" className="hover:text-white">Service Guide</Link>
             <Link to={isSignedIn ? '/dashboard' : '/login'} className="hover:text-white">
