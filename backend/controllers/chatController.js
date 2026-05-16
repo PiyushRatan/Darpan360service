@@ -1,25 +1,64 @@
 const Bot = require('../models/Bot');
 const ChatSession = require('../models/ChatSession');
+const BotMessageQuota = require('../models/BotMessageQuota');
 const { getAiResponse } = require('../services/aiService');
+const {
+    getRequestSourceOrigin,
+    isValidBotId,
+    validateBotSource
+} = require('../utils/security');
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_STORED_MESSAGES = 40;
 const SESSION_ID_PATTERN = /^sess_[a-f0-9]{32}$/;
 
+const validateBotAccess = (req, bot) => {
+    const sourceOrigin = getRequestSourceOrigin(req);
+    const sourceCheck = validateBotSource(bot, sourceOrigin);
+
+    if (!sourceCheck.allowed) {
+        return {
+            allowed: false,
+            status: 403,
+            error: sourceCheck.error
+        };
+    }
+
+    return { allowed: true, sourceOrigin };
+};
+
+const cleanChatMessage = (message) => (
+    String(message || '')
+        .replace(/\u0000/g, '')
+        .trim()
+);
+
 const handleIncomingChat = async (req, res) => {
     try {
         const { botId } = req.params;
-        const { message, clientSessionId } = req.body;
+        const { message, clientSessionId } = req.body || {};
+
+        if (!isValidBotId(botId)) {
+            return res.status(400).json({ error: "Invalid bot id" });
+        }
+
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+            return res.status(400).json({ error: "Invalid chat request body" });
+        }
 
         if (typeof message !== 'string' || typeof clientSessionId !== 'string' || !message.trim() || !clientSessionId) {
             return res.status(400).json({ error: "Missing message or clientSessionId" });
         }
 
-        const cleanMessage = message.trim();
+        const cleanMessage = cleanChatMessage(message);
 
         if (cleanMessage.length > MAX_MESSAGE_LENGTH) {
             return res.status(413).json({ error: `Message is too long. Please keep it under ${MAX_MESSAGE_LENGTH} characters.` });
+        }
+
+        if (!cleanMessage) {
+            return res.status(400).json({ error: "Message cannot be empty." });
         }
 
         if (!SESSION_ID_PATTERN.test(clientSessionId)) {
@@ -30,6 +69,20 @@ const handleIncomingChat = async (req, res) => {
         const bot = await Bot.findById(botId);
         if (!bot) {
             return res.status(404).json({ error: "Bot not found" });
+        }
+
+        const accessCheck = validateBotAccess(req, bot);
+        if (!accessCheck.allowed) {
+            return res.status(accessCheck.status).json({ error: accessCheck.error });
+        }
+
+        const quota = await BotMessageQuota.consumeBotMessageQuota(botId);
+        if (!quota.allowed) {
+            res.setHeader('Retry-After', Math.max(Math.ceil((quota.resetAt.getTime() - Date.now()) / 1000), 1));
+            return res.status(429).json({
+                error: `This chatbot has reached its ${quota.limit} messages per minute limit. Please try again shortly.`,
+                retryAfter: quota.resetAt
+            });
         }
 
         // 2. Locate or Create the Chat Session tracking this specific user
@@ -86,16 +139,26 @@ const handleIncomingChat = async (req, res) => {
 const getBotConfig = async (req, res) => {
     try {
         const { botId } = req.params;
+
+        if (!isValidBotId(botId)) {
+            return res.status(400).json({ error: "Invalid bot id" });
+        }
+
         const bot = await Bot.findById(botId);
         if (!bot) {
             return res.status(404).json({ error: "Bot not found" });
         }
+
+        const accessCheck = validateBotAccess(req, bot);
+        if (!accessCheck.allowed) {
+            return res.status(accessCheck.status).json({ error: accessCheck.error });
+        }
+
         res.status(200).json({
             botName: bot.botName,
             primaryColor: bot.primaryColor,
             avatarImgUrl: bot.avatarImgUrl,
-            welcomeMessage: bot.welcomeMessage,
-            allowedDomains: bot.allowedDomains
+            welcomeMessage: bot.welcomeMessage
         });
     } catch (error) {
         console.error("Config Fetch Error:", error);
@@ -106,8 +169,22 @@ const getChatHistory = async (req, res) => {
     try {
         const { botId, clientSessionId } = req.params;
 
+        if (!isValidBotId(botId)) {
+            return res.status(400).json({ error: "Invalid bot id" });
+        }
+
         if (!SESSION_ID_PATTERN.test(clientSessionId)) {
             return res.status(400).json({ error: "Invalid clientSessionId" });
+        }
+
+        const bot = await Bot.findById(botId);
+        if (!bot) {
+            return res.status(404).json({ error: "Bot not found" });
+        }
+
+        const accessCheck = validateBotAccess(req, bot);
+        if (!accessCheck.allowed) {
+            return res.status(accessCheck.status).json({ error: accessCheck.error });
         }
 
         const session = await ChatSession.findOne({ botId, clientSessionId });

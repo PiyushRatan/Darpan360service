@@ -1,5 +1,11 @@
 const Bot = require('../models/Bot');
 const { generateSetupDraft } = require('../services/aiService');
+const {
+    isValidBotId,
+    isValidDomain,
+    isValidHttpUrl,
+    normalizeDomain
+} = require('../utils/security');
 
 const FIELD_LIMITS = {
     botName: 120,
@@ -14,6 +20,30 @@ const FIELD_LIMITS = {
 };
 
 const MAX_ALLOWED_DOMAINS = 2;
+const STRING_FIELDS = [
+    'botName',
+    'assistantRole',
+    'languageStyle',
+    'tone',
+    'welcomeMessage',
+    'systemContext',
+    'advancedInstructions',
+    'knowledgeBaseText',
+    'primaryColor',
+    'avatarImgUrl'
+];
+const FIELD_LABELS = {
+    botName: 'Bot name',
+    assistantRole: 'Assistant role',
+    languageStyle: 'Language style',
+    tone: 'Tone',
+    welcomeMessage: 'Opening message',
+    systemContext: 'Generated instructions',
+    advancedInstructions: 'Advanced instructions',
+    knowledgeBaseText: 'Reference data',
+    primaryColor: 'Primary color',
+    avatarImgUrl: 'Avatar image URL'
+};
 const REQUIRED_GENERATOR_ANSWERS = [
     ['businessName', 'Business or assistant name'],
     ['primaryPurpose', 'What should this assistant help with'],
@@ -23,25 +53,11 @@ const REQUIRED_GENERATOR_ANSWERS = [
     ['boundaries', 'Things it should avoid saying']
 ];
 
-const normalizeDomain = (value) => {
-    if (typeof value !== 'string') return '';
-    const trimmed = value.trim().toLowerCase();
-    if (!trimmed) return '';
-
-    try {
-        const parsed = new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`);
-        return parsed.hostname.replace(/^www\./, '');
-    } catch (error) {
-        return trimmed.split('/')[0].split(':')[0].replace(/^www\./, '');
-    }
-};
-
-const isValidDomain = (domain) => (
-    domain === 'localhost'
-    || /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)
-);
-
 const pickBotPayload = (body) => {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return {};
+    }
+
     const allowedFields = [
         'botName',
         'assistantRole',
@@ -64,6 +80,12 @@ const pickBotPayload = (body) => {
         return nextPayload;
     }, {});
 
+    STRING_FIELDS.forEach((field) => {
+        if (typeof payload[field] === 'string') {
+            payload[field] = payload[field].trim();
+        }
+    });
+
     if (Array.isArray(payload.allowedDomains)) {
         payload.allowedDomains = [...new Set(
             payload.allowedDomains
@@ -77,7 +99,17 @@ const pickBotPayload = (body) => {
 
 const validateBotPayload = (payload, options = {}) => {
     const errors = [];
-    const { requireKnowledgeBase = false, existingBot = null } = options;
+    const { requireBotName = false, requireKnowledgeBase = false, existingBot = null } = options;
+
+    if (requireBotName && !Object.prototype.hasOwnProperty.call(payload, 'botName')) {
+        errors.push('Bot name is required.');
+    }
+
+    STRING_FIELDS.forEach((field) => {
+        if (Object.prototype.hasOwnProperty.call(payload, field) && typeof payload[field] !== 'string') {
+            errors.push(`${FIELD_LABELS[field]} must be text.`);
+        }
+    });
 
     if (Object.prototype.hasOwnProperty.call(payload, 'botName')) {
         if (typeof payload.botName !== 'string' || !payload.botName.trim()) {
@@ -91,12 +123,14 @@ const validateBotPayload = (payload, options = {}) => {
         if (Object.prototype.hasOwnProperty.call(payload, field)
             && typeof payload[field] === 'string'
             && payload[field].length > FIELD_LIMITS[field]) {
-            errors.push(`${field} must be ${FIELD_LIMITS[field]} characters or fewer.`);
+            errors.push(`${FIELD_LABELS[field]} must be ${FIELD_LIMITS[field]} characters or fewer.`);
         }
     });
 
-    if (payload.primaryColor && !/^#[0-9a-fA-F]{6}$/.test(payload.primaryColor)) {
-        errors.push('Primary color must be a valid 6-digit hex color, for example #2563EB.');
+    if (Object.prototype.hasOwnProperty.call(payload, 'primaryColor')) {
+        if (typeof payload.primaryColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(payload.primaryColor)) {
+            errors.push('Primary color must be a valid 6-digit hex color, for example #2563EB.');
+        }
     }
 
     const hasKnowledgeBaseText = Object.prototype.hasOwnProperty.call(payload, 'knowledgeBaseText');
@@ -120,11 +154,9 @@ const validateBotPayload = (payload, options = {}) => {
         }
     }
 
-    if (payload.avatarImgUrl && typeof payload.avatarImgUrl === 'string') {
-        try {
-            new URL(payload.avatarImgUrl);
-        } catch (error) {
-            errors.push('Avatar image URL must be a valid URL.');
+    if (Object.prototype.hasOwnProperty.call(payload, 'avatarImgUrl')) {
+        if (payload.avatarImgUrl && !isValidHttpUrl(payload.avatarImgUrl)) {
+            errors.push('Avatar image URL must be a valid http or https URL.');
         }
     }
 
@@ -149,6 +181,10 @@ const validateBotPayload = (payload, options = {}) => {
 
 const validateGeneratorPayload = (body) => {
     const errors = [];
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return ['Generator request must be a JSON object.'];
+    }
+
     const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
     const missingAnswers = REQUIRED_GENERATOR_ANSWERS
         .filter(([key]) => !String(answers[key] || '').trim())
@@ -163,6 +199,21 @@ const validateGeneratorPayload = (body) => {
             errors.push('Generator answers are too long.');
         }
     });
+
+    ['assistantRole', 'languageStyle', 'tone'].forEach((field) => {
+        if (Object.prototype.hasOwnProperty.call(body, field)
+            && (typeof body[field] !== 'string' || body[field].trim().length > 120)) {
+            errors.push(`${field} must be text under 120 characters.`);
+        }
+    });
+
+    if (Object.prototype.hasOwnProperty.call(body, 'capabilities')) {
+        if (!Array.isArray(body.capabilities)) {
+            errors.push('Capabilities must be a list.');
+        } else if (body.capabilities.length > 8 || body.capabilities.some((value) => typeof value !== 'string' || value.length > 80)) {
+            errors.push('Capabilities must contain short text values.');
+        }
+    }
 
     return errors;
 };
@@ -180,7 +231,10 @@ const sendValidationError = (res, errors) => (
 const createBot = async (req, res) => {
     try {
         const payload = pickBotPayload(req.body);
-        const validationErrors = validateBotPayload(payload, { requireKnowledgeBase: true });
+        const validationErrors = validateBotPayload(payload, {
+            requireBotName: true,
+            requireKnowledgeBase: true
+        });
 
         if (validationErrors.length > 0) {
             return sendValidationError(res, validationErrors);
@@ -216,6 +270,10 @@ const getBots = async (req, res) => {
 // @access  Private
 const updateBot = async (req, res) => {
     try {
+        if (!isValidBotId(req.params.id)) {
+            return res.status(400).json({ message: "Invalid bot id" });
+        }
+
         const payload = pickBotPayload(req.body);
         const bot = await Bot.findById(req.params.id);
 
@@ -255,6 +313,10 @@ const updateBot = async (req, res) => {
 // @access  Private
 const deleteBot = async (req, res) => {
     try {
+        if (!isValidBotId(req.params.id)) {
+            return res.status(400).json({ message: "Invalid bot id" });
+        }
+
         const bot = await Bot.findById(req.params.id);
 
         if (!bot) {

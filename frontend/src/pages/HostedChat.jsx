@@ -23,6 +23,31 @@ const resolveAvatarUrl = (avatarUrl) => {
   }
 };
 
+const getOriginFromUrl = (value) => {
+  if (!value) return '';
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return '';
+  }
+};
+
+const getChatSourceOrigin = () => {
+  const referrerOrigin = getOriginFromUrl(document.referrer);
+  if (referrerOrigin && referrerOrigin !== window.location.origin) {
+    return referrerOrigin;
+  }
+
+  const queryOrigin = getOriginFromUrl(new URLSearchParams(window.location.search).get('sourceOrigin'));
+  return queryOrigin || window.location.origin;
+};
+
+const appendSourceOrigin = (endpoint, sourceOrigin) => {
+  const separator = endpoint.includes('?') ? '&' : '?';
+  return `${endpoint}${separator}sourceOrigin=${encodeURIComponent(sourceOrigin)}`;
+};
+
 const postWidgetConfig = (botId, config) => {
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({
@@ -31,7 +56,7 @@ const postWidgetConfig = (botId, config) => {
       botName: config.name,
       avatarImgUrl: config.avatar,
       primaryColor: config.color
-    }, '*');
+    }, config.sourceOrigin && config.sourceOrigin !== window.location.origin ? config.sourceOrigin : '*');
   }
 };
 
@@ -44,8 +69,10 @@ const HostedChat = () => {
   const [botConfig, setBotConfig] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [isBooting, setIsBooting] = useState(true);
+  const [isUnavailable, setIsUnavailable] = useState(false);
   const bottomRef = useRef(null);
   const [sessionId, setSessionId] = useState('');
+  const [sourceOrigin] = useState(getChatSourceOrigin);
 
   // 1. Generate or Retrieve session ID and fetch bot config on load
   useEffect(() => {
@@ -59,20 +86,21 @@ const HostedChat = () => {
 
     const fetchConfigAndHistory = async () => {
       try {
-        const configData = await apiFetch(`/chat/${botId}/config`);
+        const configData = await apiFetch(appendSourceOrigin(`/chat/${botId}/config`, sourceOrigin));
 
         const nextConfig = {
           name: configData.botName || "AI Assistant",
           color: configData.primaryColor || "#2563EB", 
           avatar: resolveAvatarUrl(configData.avatarImgUrl),
-          welcomeMessage: configData.welcomeMessage || "Hello! I am your AI Assistant. How can I help you today?"
+          welcomeMessage: configData.welcomeMessage || "Hello! I am your AI Assistant. How can I help you today?",
+          sourceOrigin
         };
 
         setBotConfig(nextConfig);
         postWidgetConfig(botId, nextConfig);
 
         // Config is valid! Now pull their past messages if any exist
-        const historyData = await apiFetch(`/chat/${botId}/history/${storedSession}`);
+        const historyData = await apiFetch(appendSourceOrigin(`/chat/${botId}/history/${storedSession}`, sourceOrigin));
 
         if (historyData.messages && historyData.messages.length > 0) {
             // Restore actual past chat thread
@@ -84,13 +112,14 @@ const HostedChat = () => {
 
       } catch (error) {
         console.error("Failed to load bot:", error);
-        setMessages([{ role: 'model', content: "Gateway restricted. Bot not found." }]);
+        setIsUnavailable(true);
+        setMessages([{ role: 'model', content: error.message || "This chatbot is not available from this website." }]);
       } finally {
         setIsBooting(false);
       }
     };
     fetchConfigAndHistory();
-  }, [botId]);
+  }, [botId, sourceOrigin]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -99,7 +128,7 @@ const HostedChat = () => {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim() || isTyping) return;
+    if (!input.trim() || isTyping || isUnavailable) return;
 
     const userText = input.trim().slice(0, 2000);
     setInput('');
@@ -110,7 +139,7 @@ const HostedChat = () => {
       const data = await apiFetch(`/chat/${botId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userText, clientSessionId: sessionId })
+        body: JSON.stringify({ message: userText, clientSessionId: sessionId, sourceOrigin })
       });
 
       // If this is the first real message, the backend returns the actual botName/avatar
@@ -121,7 +150,8 @@ const HostedChat = () => {
             name: data.botName,
             avatar: data.avatarImgUrl ? resolveAvatarUrl(data.avatarImgUrl) : prev?.avatar,
             color: data.primaryColor || prev?.color,
-            welcomeMessage: prev?.welcomeMessage
+            welcomeMessage: prev?.welcomeMessage,
+            sourceOrigin
           };
           postWidgetConfig(botId, nextConfig);
           return nextConfig;
@@ -130,7 +160,10 @@ const HostedChat = () => {
 
       setMessages(prev => [...prev, { role: 'model', content: data.response }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'model', content: " Gateway Timeout. " + error.message }]);
+      const message = error.status === 429
+        ? 'This chatbot is receiving too many messages right now. Please try again in a minute.'
+        : error.message || 'The chatbot could not answer right now.';
+      setMessages(prev => [...prev, { role: 'model', content: message }]);
     } finally {
       setIsTyping(false);
     }
@@ -213,13 +246,13 @@ const HostedChat = () => {
             type="text" 
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={isTyping}
-            placeholder="Type your message..." 
+            disabled={isTyping || isUnavailable}
+            placeholder={isUnavailable ? "Chat unavailable on this website" : "Type your message..."}
             className="w-full bg-builder-900 border border-builder-border rounded-full py-3 px-4 pr-12 text-sm focus:outline-none focus:border-accent-500 text-white shadow-inner"
           />
           <button 
             type="submit" 
-            disabled={!input.trim() || isTyping}
+            disabled={!input.trim() || isTyping || isUnavailable}
             className="absolute right-2 top-1.5 p-1.5 bg-accent-500 rounded-full text-white disabled:opacity-50"
           >
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">

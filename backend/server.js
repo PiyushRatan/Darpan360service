@@ -2,6 +2,11 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const {
+    isAllowedHostname,
+    isPlatformOrigin,
+    normalizeHostname
+} = require('./utils/security');
 
 // Load env variables
 dotenv.config();
@@ -9,7 +14,23 @@ dotenv.config();
 const app = express();
 
 // Middleware
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+});
 app.use(express.json({ limit: '64kb' }));
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        return res.status(400).json({ error: 'Invalid JSON body.' });
+    }
+    return next(err);
+});
 
 const chatLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -26,37 +47,6 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
     message: { error: 'Too many auth requests. Please try again shortly.' }
 });
-
-const normalizeHostname = (value) => {
-    if (!value || typeof value !== 'string') return '';
-
-    const trimmed = value.trim().toLowerCase();
-    if (!trimmed) return '';
-
-    try {
-        return new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`).hostname.replace(/^www\./, '');
-    } catch (error) {
-        return trimmed.split('/')[0].split(':')[0].replace(/^www\./, '');
-    }
-};
-
-const isAllowedHostname = (originHostname, allowedDomain) => {
-    const hostname = normalizeHostname(originHostname);
-    const domain = normalizeHostname(allowedDomain);
-
-    if (!hostname || !domain) return false;
-    return hostname === domain || hostname.endsWith(`.${domain}`);
-};
-
-const configuredOrigins = (process.env.FRONTEND_URL || 'https://darpan360.in')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-const isPlatformOrigin = (origin) => {
-    const localhostPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
-    return configuredOrigins.includes(origin) || localhostPattern.test(origin);
-};
 
 // Strict Dynamic CORS Policy
 const corsOptionsDelegate = async (req, callback) => {
@@ -96,7 +86,12 @@ const corsOptionsDelegate = async (req, callback) => {
     }
 
     if (isDomainAllowed) {
-        callback(null, { origin: true });
+        callback(null, {
+            origin: true,
+            credentials: false,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Darpan-Source-Origin']
+        });
     } else {
         callback(new Error('Not allowed by strict CORS policy'));
     }

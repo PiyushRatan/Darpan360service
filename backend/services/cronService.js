@@ -1,36 +1,32 @@
 const cron = require('node-cron');
 const ChatSession = require('../models/ChatSession');
+const BotMessageQuota = require('../models/BotMessageQuota');
 
-/**
- * 🧹 The Grim Reaper Sweeper 🧹
- * Runs every hour to completely eradicate any chat sessions that have been inactive for over 4 hours.
- */
 const startCronJobs = () => {
-    // Run at minute 0 past every hour (e.g. 1:00, 2:00, 3:00)
     cron.schedule('0 * * * *', async () => {
-        console.log('[Cron Sweeper] Commencing 4-Hour Inactivity Pruning Sequence...');
-        
+        console.log('[Cron] Starting hourly chat cleanup.');
+
         try {
-            // Find timestamps exactly 4 hours ago from right now
             const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
-            
-            // Delete all sessions where the LAST update (last message sent/received) was older than 4 hours
-            const deletionResult = await ChatSession.deleteMany({
+
+            const sessionDeletion = await ChatSession.deleteMany({
                 updatedAt: { $lt: fourHoursAgo }
             });
+            const quotaDeletion = await BotMessageQuota.deleteExpired();
 
-            if (deletionResult.deletedCount > 0) {
-                console.log(`[Cron Sweeper] Successfully purged ${deletionResult.deletedCount} isolated chat sessions.`);
-            } else {
-                console.log('[Cron Sweeper] Database is pristine. No abandoned sessions found.');
+            if (sessionDeletion.deletedCount > 0) {
+                console.log(`[Cron] Deleted ${sessionDeletion.deletedCount} inactive chat sessions.`);
             }
 
+            if (quotaDeletion.deletedCount > 0) {
+                console.log(`[Cron] Deleted ${quotaDeletion.deletedCount} expired rate-limit records.`);
+            }
         } catch (error) {
-            console.error('[Cron Sweeper] CRITICAL ERROR during pruning sequence:', error);
+            console.error('[Cron] Cleanup failed:', error);
         }
     });
 
-    console.log("⏰ Cron Sweeper system initialized (Hourly interval / 4hr threshold).");
+    console.log('Cron cleanup initialized.');
 };
 
 module.exports = { startCronJobs };

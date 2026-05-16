@@ -9,6 +9,10 @@ const protect = async (req, res, next) => {
             // Get token from header (Format: "Bearer eyJhbGciOiJSUzI1...")
             token = req.headers.authorization.split(' ')[1];
 
+            if (!token) {
+                return res.status(401).json({ message: 'Not authorized, token missing' });
+            }
+
             // Verify token using Firebase Admin
             const decodedToken = await admin.auth().verifyIdToken(token);
 
@@ -25,12 +29,12 @@ const protect = async (req, res, next) => {
             next();
         } catch (error) {
             console.error("Auth Middleware Error:", error.message);
-            res.status(401).json({ message: 'Not authorized, token failed' });
+            return res.status(401).json({ message: 'Not authorized, token failed' });
         }
     }
 
     if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token provided' });
+        return res.status(401).json({ message: 'Not authorized, no token provided' });
     }
 };
 

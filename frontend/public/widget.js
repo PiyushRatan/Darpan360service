@@ -28,7 +28,10 @@
     // This allows local testing and live deploys to use the same script file.
     const scriptSrc = currentScript ? currentScript.src : 'https://darpan360ai.web.app/widget.js';
     const domainOrigin = new URL(scriptSrc).origin;
-    const iframeUrl = `${domainOrigin}/chat/${botId}`;
+    const sourceOrigin = window.location.origin && window.location.origin !== 'null'
+        ? window.location.origin
+        : '';
+    const iframeUrl = `${domainOrigin}/chat/${encodeURIComponent(botId)}${sourceOrigin ? `?sourceOrigin=${encodeURIComponent(sourceOrigin)}` : ''}`;
     const defaultLogoUrl = `${domainOrigin}/logo.png`;
     const configuredAvatarUrl = currentScript?.getAttribute('data-avatar-url') || '';
 

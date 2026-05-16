@@ -419,12 +419,15 @@ const Dashboard = () => {
 
     if (formData.avatarImgUrl.trim()) {
       try {
-        new URL(formData.avatarImgUrl.trim());
+        const avatarUrl = new URL(formData.avatarImgUrl.trim());
+        if (!['http:', 'https:'].includes(avatarUrl.protocol)) {
+          throw new Error('Unsupported protocol');
+        }
       } catch {
         pushToast({
           type: 'error',
           title: 'Invalid avatar URL',
-          message: 'Use a full URL like https://example.com/logo.png.'
+          message: 'Use a full http or https URL like https://example.com/logo.png.'
         });
         return;
       }
