@@ -2,14 +2,19 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRightIcon,
+  ArrowRightOnRectangleIcon,
   BookOpenIcon,
+  ChevronDownIcon,
   CodeBracketIcon,
   DocumentTextIcon,
   GlobeAltIcon,
   ShieldCheckIcon,
+  UserCircleIcon,
   WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
 import { SEO } from '../utils/seo';
+import { auth } from '../config/firebase';
+import { useAuth } from '../context/useAuth';
 
 const deliveryItems = [
   {
@@ -50,7 +55,113 @@ const clientChecklist = [
   'Approved website domains'
 ];
 
+const getInitials = (user) => {
+  const source = user?.displayName || user?.email || 'Operator';
+  return source
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'O';
+};
+
+const LandingProfileMenu = ({ currentUser, dbUser }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const menuRef = React.useRef(null);
+  const displayName = currentUser?.displayName || currentUser?.email || 'Operator';
+
+  React.useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!menuRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const handleSignOut = async () => {
+    setIsOpen(false);
+    await auth.signOut();
+  };
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
+        className="flex items-center gap-2 border border-builder-border bg-builder-800 px-2.5 py-2 text-sm font-medium text-white transition-colors hover:bg-builder-700"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+      >
+        {currentUser?.photoURL ? (
+          <img src={currentUser.photoURL} alt="" className="h-8 w-8 rounded-full border border-builder-border object-cover" />
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center bg-builder-900 text-xs font-semibold text-accent-500">
+            {getInitials(currentUser)}
+          </span>
+        )}
+        <span className="hidden max-w-32 truncate md:inline">{displayName}</span>
+        <ChevronDownIcon className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-30 mt-2 w-64 border border-builder-border bg-builder-800 p-2 shadow-xl"
+        >
+          <div className="border-b border-builder-border px-3 py-3">
+            <div className="truncate text-sm font-semibold text-white">{displayName}</div>
+            <div className="mt-1 truncate text-xs text-gray-500">{currentUser?.email}</div>
+            {dbUser?.role === 'admin' && (
+              <div className="mt-2 inline-flex border border-accent-500/30 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-accent-500">
+                Admin
+              </div>
+            )}
+          </div>
+
+          <Link
+            to="/dashboard"
+            role="menuitem"
+            onClick={() => setIsOpen(false)}
+            className="mt-2 flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-builder-900 hover:text-white"
+          >
+            <UserCircleIcon className="h-5 w-5 text-gray-500" />
+            Dashboard
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium text-gray-300 transition-colors hover:bg-builder-900 hover:text-white"
+          >
+            <ArrowRightOnRectangleIcon className="h-5 w-5 text-gray-500" />
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Landing = () => {
+  const { currentUser, dbUser } = useAuth();
+  const isSignedIn = Boolean(currentUser);
+
   return (
     <div className="min-h-screen bg-builder-900 text-gray-200 selection:bg-accent-500 selection:text-white">
       <SEO
@@ -63,8 +174,11 @@ const Landing = () => {
           <Link to="/" className="text-xl font-bold tracking-tight text-white">Darpan360</Link>
           <nav className="flex items-center gap-4">
             <Link to="/docs" className="text-sm font-medium text-gray-400 transition-colors hover:text-white">Service Guide</Link>
-            <Link to="/login" className="text-sm font-medium text-gray-400 transition-colors hover:text-white">Operator Sign In</Link>
-            <Link to="/dashboard" className="btn-primary text-sm px-5">Dashboard</Link>
+            {isSignedIn ? (
+              <LandingProfileMenu currentUser={currentUser} dbUser={dbUser} />
+            ) : (
+              <Link to="/login" className="btn-primary px-5 text-sm">Operator Sign In</Link>
+            )}
           </nav>
         </div>
       </header>
@@ -84,8 +198,8 @@ const Landing = () => {
                 View Service Guide
                 <ArrowRightIcon className="ml-2 h-5 w-5" />
               </Link>
-              <Link to="/login" className="btn-secondary px-6 py-3 text-base">
-                Operator Sign In
+              <Link to={isSignedIn ? '/dashboard' : '/login'} className="btn-secondary px-6 py-3 text-base">
+                {isSignedIn ? 'Open Dashboard' : 'Operator Sign In'}
               </Link>
             </div>
           </div>
@@ -162,8 +276,8 @@ const Landing = () => {
                 <CodeBracketIcon className="mr-2 h-5 w-5" />
                 Open-source path
               </Link>
-              <Link to="/dashboard" className="btn-primary px-5 py-3">
-                Configure a client bot
+              <Link to={isSignedIn ? '/dashboard' : '/login'} className="btn-primary px-5 py-3">
+                {isSignedIn ? 'Configure a client bot' : 'Operator Sign In'}
               </Link>
             </div>
           </div>
@@ -175,7 +289,9 @@ const Landing = () => {
           <p>Darpan360 managed AI chatbot deployments.</p>
           <div className="flex gap-4">
             <Link to="/docs" className="hover:text-white">Service Guide</Link>
-            <Link to="/login" className="hover:text-white">Operator Sign In</Link>
+            <Link to={isSignedIn ? '/dashboard' : '/login'} className="hover:text-white">
+              {isSignedIn ? 'Dashboard' : 'Operator Sign In'}
+            </Link>
           </div>
         </div>
       </footer>
