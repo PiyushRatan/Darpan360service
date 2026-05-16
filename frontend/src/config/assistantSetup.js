@@ -182,24 +182,78 @@ export const buildSystemContext = ({
   ].filter(Boolean).join('\n');
 };
 
+const cleanReferenceOpeningLine = (line) => String(line || '')
+  .replace(/^[-*#\d.)\s]+/, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const getReferenceOpeningContext = (knowledgeBaseText) => {
+  const lines = String(knowledgeBaseText || '')
+    .split(/\n+/)
+    .map(cleanReferenceOpeningLine)
+    .filter(Boolean);
+
+  const ignoredLabels = new Set([
+    'assistant role',
+    'language style',
+    'tone',
+    'enabled capabilities',
+    'extra notes'
+  ]);
+
+  const usefulValues = [];
+
+  lines.forEach((line, index) => {
+    const labelValueMatch = line.match(/^([^:]{2,60}):\s*(.+)$/);
+    const labelOnlyMatch = line.match(/^([^:]{2,60}):$/);
+
+    if (labelValueMatch) {
+      const label = labelValueMatch[1].trim().toLowerCase();
+      const value = labelValueMatch[2].trim();
+      if (!ignoredLabels.has(label) && value.length > 8) {
+        usefulValues.push(value);
+      }
+      return;
+    }
+
+    if (labelOnlyMatch) {
+      const label = labelOnlyMatch[1].trim().toLowerCase();
+      const nextLine = lines[index + 1];
+      if (!ignoredLabels.has(label) && nextLine && nextLine.length > 8 && !nextLine.endsWith(':')) {
+        usefulValues.push(nextLine);
+      }
+      return;
+    }
+
+    if (line.length > 12 && !ignoredLabels.has(line.toLowerCase())) {
+      usefulValues.push(line);
+    }
+  });
+
+  return usefulValues
+    .slice(0, 2)
+    .join(' ')
+    .replace(/[.。!?]+$/, '')
+    .slice(0, 130);
+};
+
 export const buildOpeningMessage = ({ botName, assistantRole, languageStyle, knowledgeBaseText }) => {
   const role = getRoleById(assistantRole);
   const language = getLanguageById(languageStyle);
-  const firstLine = String(knowledgeBaseText || '')
-    .split(/\n|\. /)
-    .map((line) => line.trim())
-    .find((line) => line.length > 12);
-
-  const contextHint = firstLine ? ` I can help with ${firstLine.replace(/:$/, '').slice(0, 90)}.` : '';
-  const name = botName || role.label;
+  const referenceContext = getReferenceOpeningContext(knowledgeBaseText);
+  const roleLabel = role.label.toLowerCase();
+  const englishIdentity = botName ? `${botName}'s ${roleLabel}` : `your ${roleLabel}`;
+  const conversationalIdentity = botName ? `${botName} ka ${roleLabel}` : `aapka ${roleLabel}`;
+  const hindiContext = referenceContext ? ` Main ${referenceContext} ke baare mein madad kar sakta hoon.` : '';
+  const englishContext = referenceContext ? ` I can help with ${referenceContext}.` : '';
 
   if (language.id === 'hindi') {
-    return `Namaste, main ${name} assistant hoon.${contextHint} Main aapki kaise madad kar sakta hoon?`;
+    return `Namaste, main ${conversationalIdentity} hoon.${hindiContext} Aap kya jaana chahenge?`;
   }
 
   if (language.id === 'hinglish') {
-    return `Hi, main ${name} assistant hoon.${contextHint} Bataiye, main kaise help kar sakta hoon?`;
+    return `Hi, main ${conversationalIdentity} hoon.${englishContext} Bataiye, main kaise help kar sakta hoon?`;
   }
 
-  return `Hello, I am the ${name} ${role.label.toLowerCase()}.${contextHint} How can I help you today?`;
+  return `Hello, I am ${englishIdentity}.${englishContext} How can I help you today?`;
 };

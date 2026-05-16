@@ -41,6 +41,12 @@ const parseGeneratedSetup = (text) => {
     };
 };
 
+const cleanOpeningContext = (value) => String(value || '')
+    .replace(/\s+/g, ' ')
+    .replace(/[.?!]+$/, '')
+    .trim()
+    .slice(0, 130);
+
 const createFallbackSetupDraft = ({ assistantRole, languageStyle, tone, answers = {} }) => {
     const sections = [
         ['Business or assistant name', answers.businessName],
@@ -60,8 +66,13 @@ const createFallbackSetupDraft = ({ assistantRole, languageStyle, tone, answers 
         ...sections.flatMap(([label, value]) => [`${label}:`, String(value).trim(), ''])
     ].join('\n').trim();
 
-    const name = answers.businessName || 'there';
-    const purpose = answers.primaryPurpose ? ` I can help with ${answers.primaryPurpose}.` : '';
+    const name = cleanOpeningContext(answers.businessName) || 'there';
+    const referenceContext = [
+        answers.primaryPurpose,
+        answers.offerings,
+        answers.commonQuestions
+    ].map(cleanOpeningContext).find(Boolean);
+    const purpose = referenceContext ? ` I can help with ${referenceContext}.` : '';
 
     return {
         knowledgeBaseText,
@@ -79,7 +90,7 @@ Return only valid JSON with these two string fields:
 }
 
 The reference data should be structured, specific, beginner-friendly, and useful as the assistant knowledge base.
-The welcome message must be short, natural, and based on the supplied business/context.
+The welcome message must be short, natural, and include one concrete context/reference opening line from the supplied business details, purpose, services, topics, or common questions. Do not return a generic welcome message that could fit any business.
 
 Assistant role: ${assistantRole || 'General Assistant'}
 Language style: ${languageStyle || 'English'}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
+  ArrowsRightLeftIcon,
   CodeBracketIcon,
   DocumentTextIcon,
   GlobeAltIcon,
@@ -20,6 +21,7 @@ const sections = [
   { id: 'managed-service', label: 'Managed service' },
   { id: 'client-brief', label: 'Client brief' },
   { id: 'workflow', label: 'Workflow' },
+  { id: 'premium-motion', label: 'Premium motion' },
   { id: 'installation', label: 'Installation' },
   { id: 'operations', label: 'Operations' },
   { id: 'open-source', label: 'Open source' }
@@ -47,6 +49,13 @@ const operationRows = [
   ['Reference data', 'The approved business information used to keep answers aligned with the client brief.'],
   ['Allowed domains', 'The approved sites where the public widget is allowed to run.'],
   ['Brand color and avatar', 'Basic client-facing styling for the chat header and widget.']
+];
+
+const horizontalScrollUses = [
+  ['Timelines', 'Show process stages as a left-to-right story while the page scroll remains natural.'],
+  ['Product showcases', 'Move through features, plans, screenshots, or client examples with stronger pacing.'],
+  ['Portfolios', 'Let each case study feel like a frame in a premium presentation.'],
+  ['Storytelling sections', 'Use horizontal movement when the content has a clear sequence or reveal order.']
 ];
 
 const InfoCard = ({ icon, title, children }) => (
@@ -193,6 +202,61 @@ const Docs = () => {
                   <p className="mt-2 text-sm leading-6 text-gray-400">{text}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section id="premium-motion" className="space-y-5">
+            <SectionTitle>Premium motion pattern: horizontal scroll sections</SectionTitle>
+            <div className="border border-builder-border bg-builder-800 p-4 sm:p-5 md:p-6">
+              <div className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr] lg:items-start">
+                <div>
+                  <div className="flex h-11 w-11 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
+                    <ArrowsRightLeftIcon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-5 text-lg font-semibold tracking-tight text-white">
+                    Content moves sideways while the user scrolls down.
+                  </h3>
+                  <p className="mt-3 text-sm leading-6 text-gray-400">
+                    This pattern keeps the browser's normal vertical scroll, but maps that scroll progress to a
+                    horizontal content track. It feels premium, immersive, and app-like when used for a sequence
+                    that genuinely benefits from side-to-side movement.
+                  </p>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                    Best used with restraint
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
+                    {horizontalScrollUses.map(([title, text], index) => (
+                      <article
+                        key={title}
+                        className="min-w-[240px] snap-start border border-builder-border bg-builder-900 p-4 sm:min-w-[280px]"
+                      >
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">
+                          {String(index + 1).padStart(2, '0')}
+                        </div>
+                        <h4 className="mt-3 text-sm font-semibold text-white">{title}</h4>
+                        <p className="mt-2 text-sm leading-6 text-gray-400">{text}</p>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="mt-4 grid gap-3 text-sm leading-6 text-gray-400 md:grid-cols-3">
+                    <div className="border-l border-builder-border pl-4">
+                      <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Feels</span>
+                      Premium, immersive, presentation-like.
+                    </div>
+                    <div className="border-l border-builder-border pl-4">
+                      <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Use for</span>
+                      Timelines, product stories, portfolios.
+                    </div>
+                    <div className="border-l border-builder-border pl-4">
+                      <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Avoid when</span>
+                      Simple text would be faster to scan.
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
