@@ -8,7 +8,7 @@ async function testKey() {
     
     try {
         const genAI = new GoogleGenerativeAI(key);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
         
         const result = await model.generateContent("color of sky in 20words max?");
         console.log("Success! Response:", result.response.text());

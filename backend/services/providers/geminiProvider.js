@@ -10,9 +10,9 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const generateGeminiResponse = async (apiKey, systemContext, history, newMessage) => {
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // We use gemini-2.5-flash-lite as it is extremely fast and has a high free-tier rate limit
+    // Use the stable Gemini 3.1 Flash-Lite API model for high-volume, low-latency chat.
     const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3.1-flash-lite",
         systemInstruction: systemContext
     });
 

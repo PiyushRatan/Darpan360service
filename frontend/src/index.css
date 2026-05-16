@@ -14,6 +14,45 @@
   }
 }
 
+@keyframes marquee-drift {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+
+@keyframes marquee-drift-reverse {
+  from {
+    transform: translateX(-33.333%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes grain-shift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  25% {
+    transform: translate3d(-2%, 1%, 0);
+  }
+
+  50% {
+    transform: translate3d(1%, -2%, 0);
+  }
+
+  75% {
+    transform: translate3d(2%, 2%, 0);
+  }
+}
+
 @layer base {
   body {
     @apply bg-builder-900 text-gray-200 antialiased selection:bg-accent-500 selection:text-white;
@@ -39,5 +78,35 @@
   /* Flat Structured Cards */
   .card {
     @apply bg-builder-800 border border-builder-border rounded p-6 shadow-sm;
+  }
+
+  .animate-marquee {
+    animation: marquee-drift 28s linear infinite;
+  }
+
+  .animate-marquee-reverse {
+    animation: marquee-drift-reverse 34s linear infinite;
+  }
+
+  .animate-marquee:hover,
+  .animate-marquee-reverse:hover {
+    animation-play-state: paused;
+  }
+
+  .noise-layer {
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.42) 0 1px, transparent 1px),
+      radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.28) 0 1px, transparent 1px),
+      radial-gradient(circle at 40% 70%, rgba(255, 255, 255, 0.34) 0 1px, transparent 1px);
+    background-size: 13px 17px, 19px 23px, 29px 31px;
+    animation: grain-shift 9s steps(6) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-reverse,
+  .noise-layer {
+    animation: none;
   }
 }

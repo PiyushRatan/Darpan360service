@@ -4,18 +4,26 @@ import {
   ArrowRightIcon,
   ArrowRightOnRectangleIcon,
   BookOpenIcon,
+  BoltIcon,
   ChevronDownIcon,
   CodeBracketIcon,
   DocumentTextIcon,
   GlobeAltIcon,
+  PlayCircleIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   UserCircleIcon,
   WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
 import { SEO } from '../utils/seo';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/useAuth';
+
+gsap.registerPlugin(ScrollTrigger, useGSAP);
 
 const deliveryItems = [
   {
@@ -56,9 +64,89 @@ const clientChecklist = [
   'Approved website domains'
 ];
 
+const integrationRows = [
+  ['Website widget', 'Hosted chat', 'Domain lock', 'Firebase auth', 'Lead capture', 'Operator dashboard'],
+  ['Knowledge brief', 'Tone rules', 'Escalation paths', 'Service FAQs', 'Install script', 'Launch QA']
+];
+
+const intelligenceCards = [
+  {
+    label: '01 / Intake',
+    title: 'Business context becomes assistant memory',
+    text: 'Collect the rules that matter: services, pricing logic, policies, contact routes, and the exact tone the client wants visitors to hear.',
+    metric: '6 inputs'
+  },
+  {
+    label: '02 / Control',
+    title: 'Every bot gets guardrails before launch',
+    text: 'Approved domains, fallback instructions, escalation paths, and managed prompts keep the public experience focused.',
+    metric: 'Domain safe'
+  },
+  {
+    label: '03 / Deploy',
+    title: 'Install once, refine continuously',
+    text: 'A hosted page or widget gets the bot live quickly, while the dashboard stays ready for edits after real visitor questions arrive.',
+    metric: 'Live loop'
+  }
+];
+
+const launchSteps = [
+  {
+    label: 'Client packet',
+    title: 'Collect the source of truth',
+    text: 'Services, FAQs, policy limits, pricing rules, contacts, and working hours become the starting dataset.'
+  },
+  {
+    label: 'Assistant build',
+    title: 'Shape the answer system',
+    text: 'The setup prompt, fallback rules, tone, approved domains, and widget configuration are prepared together.'
+  },
+  {
+    label: 'Website install',
+    title: 'Move from demo to live site',
+    text: 'The bot launches through a hosted chat page or embeddable widget, then gets tested in the real website flow.'
+  },
+  {
+    label: 'Refinement loop',
+    title: 'Improve after real visitor behavior',
+    text: 'New questions expose gaps, and the operator dashboard keeps every client bot current without rebuilding.'
+  }
+];
+
+const workflowSteps = [
+  {
+    kicker: 'Knowledge packet',
+    title: 'Client content is shaped into a controlled brief',
+    text: 'FAQs, services, contact paths, policy language, and boundaries become a clean setup file instead of scattered notes.'
+  },
+  {
+    kicker: 'Assistant setup',
+    title: 'The bot is configured with tone, scope, and safety',
+    text: 'Prompts, allowed domains, widget settings, and fallback behavior are tuned before any visitor sees the chatbot.'
+  },
+  {
+    kicker: 'Live refinement',
+    title: 'Real questions create the improvement loop',
+    text: 'Visitor patterns reveal missing answers, unclear service details, and new updates that can be added from the operator dashboard.'
+  }
+];
+
 const creatorCreditUrl = 'https://piyushratan.in/work/darpan360';
-const revealViewport = { once: true, amount: 0.32 };
-const revealEase = [0.22, 1, 0.36, 1];
+
+const usePrefersReducedMotion = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setPrefersReducedMotion(query.matches);
+
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  return prefersReducedMotion;
+};
 
 const getInitials = (user) => {
   const source = user?.displayName || user?.email || 'Operator';
@@ -70,44 +158,158 @@ const getInitials = (user) => {
     .join('') || 'O';
 };
 
-const Reveal = ({ children, className = '', delay = 0, y = 24 }) => {
-  const shouldReduceMotion = useReducedMotion();
+const Reveal = ({ children, className = '' }) => (
+  <div data-reveal className={className}>
+    {children}
+  </div>
+);
 
-  if (shouldReduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
+const MagneticLink = ({ to, children, className = '' }) => (
+  <Link to={to} data-magnetic className={className}>
+    {children}
+  </Link>
+);
+
+const IntegrationMarquee = () => {
+  const repeatedRows = integrationRows.map((row) => [...row, ...row, ...row]);
 
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={revealViewport}
-      transition={{ duration: 0.62, ease: revealEase, delay }}
-    >
-      {children}
-    </motion.div>
+    <section className="overflow-hidden border-y border-builder-border bg-builder-900 py-6">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="mb-4 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+          <span className="h-px w-10 bg-accent-500" aria-hidden="true" />
+          Launch system modules
+        </div>
+      </div>
+      <div className="space-y-3">
+        {repeatedRows.map((row, rowIndex) => (
+          <div
+            key={rowIndex}
+            className={`flex w-max gap-3 ${rowIndex === 0 ? 'animate-marquee' : 'animate-marquee-reverse'}`}
+          >
+            {row.map((item, index) => (
+              <span
+                key={`${item}-${index}`}
+                className="border border-builder-border bg-builder-800/70 px-4 py-2 text-sm font-medium text-gray-300 shadow-sm transition-colors hover:border-accent-500/50 hover:text-white"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 };
 
-const StackedServiceCard = ({ item, index, total, progress }) => {
-  const shouldReduceMotion = useReducedMotion();
-  const start = Math.max(0, (index - 0.5) / total);
-  const middle = Math.min(1, (index + 0.15) / total);
-  const end = Math.min(1, (index + 1) / total);
-  const y = useTransform(progress, [start, end], [index * 28, index * 8]);
-  const scale = useTransform(progress, [start, end], [1, 1 - index * 0.018]);
-  const opacity = useTransform(progress, [start, middle, end], [0.72, 1, 1]);
+const IntelligenceCard = ({ card, index }) => (
+  <article
+    data-stack-card
+    data-tilt-card
+    className="group min-h-[260px] border border-builder-border bg-builder-800 p-6 shadow-sm transition-colors hover:border-gray-600 lg:sticky"
+    style={{ top: `calc(6rem + ${index * 20}px)`, zIndex: index + 1 }}
+  >
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">{card.label}</span>
+        <span className="border border-builder-border bg-builder-900 px-2 py-1 text-xs font-semibold text-gray-400 transition-colors group-hover:text-white">
+          {card.metric}
+        </span>
+      </div>
+      <h3 className="mt-8 text-xl font-semibold tracking-tight text-white">{card.title}</h3>
+      <p className="mt-4 text-sm leading-6 text-gray-400">{card.text}</p>
+      <div className="mt-auto pt-8 text-xs font-semibold uppercase tracking-[0.16em] text-gray-600">
+        Setup stage {String(index + 1).padStart(2, '0')}
+      </div>
+    </div>
+  </article>
+);
+
+const LaunchControlSection = () => (
+  <section data-stack-section className="border-b border-builder-border bg-builder-900 px-6 py-16 lg:py-0">
+    <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 lg:min-h-[215vh] lg:grid-cols-[0.82fr_1.18fr]">
+      <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
+        <Reveal className="max-w-3xl">
+          <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
+            Built like a launch control room
+          </h2>
+          <p className="mt-5 text-sm leading-7 text-gray-400">
+            Intake, guardrails, deployment, and improvement stay connected as one managed operating system for every client bot.
+          </p>
+        </Reveal>
+      </div>
+
+      <div className="space-y-4 lg:py-24">
+        {intelligenceCards.map((card, index) => (
+          <IntelligenceCard key={card.title} card={card} index={index} />
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+const ClientLaunchSection = () => (
+  <section data-side-section className="relative border-b border-builder-border bg-builder-900 lg:h-[250vh]">
+    <div className="lg:flex lg:min-h-screen lg:items-center lg:overflow-hidden">
+      <div className="mx-auto w-full max-w-7xl px-6 py-16 lg:py-0">
+        <div className="mb-10 grid gap-5 lg:grid-cols-[420px_1fr] lg:items-end">
+          <Reveal>
+            <div>
+              <div className="mb-5 h-px w-16 bg-accent-500" aria-hidden="true" />
+              <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
+                Client launch sequence
+              </h2>
+            </div>
+          </Reveal>
+          <Reveal>
+            <p className="max-w-2xl text-sm leading-7 text-gray-400 lg:ml-auto">
+              Move from raw business knowledge to a live assistant with a clear setup path, installation step, and refinement loop.
+            </p>
+          </Reveal>
+        </div>
+
+        <div className="relative overflow-visible">
+          <div data-horizontal-track className="flex flex-col gap-4 lg:w-max lg:flex-row lg:gap-5">
+            {launchSteps.map((item, index) => (
+              <article
+                key={item.title}
+                className="min-h-[300px] border border-builder-border bg-builder-800 p-6 lg:w-[560px]"
+              >
+                <div className="flex items-center justify-between border-b border-builder-border pb-5">
+                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">
+                    {String(index + 1).padStart(2, '0')} / {item.label}
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-600">
+                    Client step
+                  </span>
+                </div>
+                <h3 className="mt-10 max-w-md text-2xl font-semibold tracking-tight text-white">{item.title}</h3>
+                <p className="mt-5 max-w-md text-sm leading-7 text-gray-400">{item.text}</p>
+                <div className="mt-12 grid grid-cols-4 gap-2" aria-hidden="true">
+                  {launchSteps.map((_, markerIndex) => (
+                    <span
+                      key={markerIndex}
+                      className={`h-1.5 border border-builder-border ${markerIndex <= index ? 'bg-accent-500/70' : 'bg-builder-900'}`}
+                    />
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+const ServiceCard = ({ item, index }) => {
   const Icon = item.icon;
 
   return (
-    <motion.article
-      style={{
-        top: `calc(5rem + ${index * 18}px)`,
-        zIndex: index + 1,
-        ...(shouldReduceMotion ? {} : { y, scale, opacity })
-      }}
+    <article
+      data-stack-card
       className="border border-builder-border bg-builder-800 p-5 shadow-sm transition-colors hover:border-gray-600 lg:sticky"
+      style={{ top: `calc(5rem + ${index * 18}px)`, zIndex: index + 1 }}
     >
       <div className="flex items-start gap-4">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
@@ -115,58 +317,141 @@ const StackedServiceCard = ({ item, index, total, progress }) => {
         </div>
         <div className="min-w-0">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-            Service layer {String(index + 1).padStart(2, '0')}
+            Service part {String(index + 1).padStart(2, '0')}
           </div>
           <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">{item.title}</h3>
           <p className="mt-3 text-sm leading-6 text-gray-400">{item.text}</p>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 };
 
-const ServiceStackSection = () => {
-  const sectionRef = React.useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start end', 'end start']
-  });
+const ServiceStackSection = () => (
+  <section data-stack-section className="border-y border-builder-border bg-builder-900 py-16 lg:py-0">
+    <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 px-6 lg:min-h-[235vh] lg:grid-cols-[0.78fr_1.22fr]">
+      <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
+        <Reveal>
+          <div className="max-w-2xl">
+            <div className="mb-5 h-px w-16 bg-accent-500" aria-hidden="true" />
+            <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
+              What the service delivers
+            </h2>
+            <p className="mt-5 text-sm leading-7 text-gray-400">
+              A client does not need to understand API keys, hosting, prompts, or Firebase. The value is a configured assistant installed on their website and maintained by you.
+            </p>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+              Managed delivery sequence
+            </p>
+          </div>
+        </Reveal>
+      </div>
 
-  return (
-    <section ref={sectionRef} className="border-y border-builder-border bg-builder-900 py-16 lg:py-0">
-      <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:min-h-[185vh] lg:grid-cols-[0.78fr_1.22fr]">
-        <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
-          <Reveal>
-            <div className="max-w-2xl">
-              <div className="mb-5 h-px w-16 bg-accent-500" aria-hidden="true" />
-              <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
-                What the service delivers
-              </h2>
-              <p className="mt-5 text-sm leading-7 text-gray-400">
-                A client does not need to understand API keys, hosting, prompts, or Firebase. The value is a configured assistant installed on their website and maintained by you.
-              </p>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                Managed delivery sequence
-              </p>
-            </div>
+      <div className="space-y-4 lg:py-24">
+        {deliveryItems.map((item, index) => (
+          <ServiceCard key={item.title} item={item} index={index} />
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+const WorkflowStorySection = () => (
+  <section data-workflow-section className="border-y border-builder-border bg-builder-900 lg:min-h-[220vh]">
+    <div data-workflow-pin className="mx-auto grid max-w-7xl gap-10 px-6 py-16 lg:min-h-screen lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:py-0">
+      <div className="space-y-6">
+        <Reveal>
+          <div className="mb-5 h-px w-16 bg-accent-500" aria-hidden="true" />
+          <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
+            AI workflow from intake to live answers
+          </h2>
+          <p className="mt-5 text-sm leading-7 text-gray-400">
+            A client request moves through intake, setup, website installation, and continuous tuning.
+          </p>
+        </Reveal>
+
+        {workflowSteps.map((step) => (
+          <Reveal key={step.title}>
+            <article data-workflow-copy className="group border-l border-builder-border bg-builder-900 py-3 pl-5 transition-colors hover:border-accent-500">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">{step.kicker}</div>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">{step.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-gray-400">{step.text}</p>
+            </article>
           </Reveal>
-        </div>
+        ))}
+      </div>
 
-        <div className="space-y-4 lg:py-24">
-          {deliveryItems.map((item, index) => (
-            <StackedServiceCard
-              key={item.title}
-              item={item}
-              index={index}
-              total={deliveryItems.length}
-              progress={scrollYProgress}
-            />
-          ))}
+      <div>
+        <div data-workflow-mockup className="relative overflow-hidden border border-builder-border bg-builder-800 p-5 shadow-sm">
+          <div className="absolute inset-0 opacity-[0.07] [background-image:radial-gradient(circle_at_1px_1px,#fff_1px,transparent_0)] [background-size:18px_18px]" aria-hidden="true" />
+          <div className="relative border border-builder-border bg-builder-900 p-5">
+            <div className="flex items-center justify-between border-b border-builder-border pb-4">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Live orchestration</div>
+                <h3 className="mt-1 text-lg font-semibold text-white">Client bot pipeline</h3>
+              </div>
+              <SparklesIcon className="h-6 w-6 text-accent-500" />
+            </div>
+
+            <div className="relative mt-8 min-h-[360px]">
+              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 520 360" fill="none" aria-hidden="true">
+                <path d="M82 66 C190 46 196 162 278 144 C364 126 352 260 450 238" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
+                <path
+                  data-workflow-path
+                  d="M82 66 C190 46 196 162 278 144 C364 126 352 260 450 238"
+                  stroke="url(#workflowGradient)"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                />
+                <defs>
+                  <linearGradient id="workflowGradient" x1="72" x2="458" y1="62" y2="242" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#06b6d4" />
+                    <stop offset="1" stopColor="#818cf8" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              {[
+                { title: 'Intake', subtitle: 'FAQs + policy', position: 'left-[4%] top-[6%]', Icon: DocumentTextIcon },
+                { title: 'Configure', subtitle: 'Prompt + domain', position: 'left-[39%] top-[30%]', Icon: ShieldCheckIcon },
+                { title: 'Deploy', subtitle: 'Widget + updates', position: 'right-[2%] top-[58%]', Icon: BoltIcon }
+              ].map(({ title, subtitle, position, Icon }) => (
+                <div
+                  key={title}
+                  data-workflow-node
+                  className={`absolute ${position} w-36 border border-builder-border bg-builder-800 p-4 shadow-sm`}
+                >
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
+                    {React.createElement(Icon, { className: 'h-5 w-5' })}
+                  </div>
+                  <div className="text-sm font-semibold text-white">{title}</div>
+                  <div className="mt-1 text-xs leading-5 text-gray-500">{subtitle}</div>
+                </div>
+              ))}
+
+              <div data-workflow-answer className="absolute bottom-0 left-0 right-0 border border-builder-border bg-builder-900/90 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Visitor question</div>
+                    <p className="mt-1 text-sm text-gray-300">"Do you provide emergency appointments after hours?"</p>
+                  </div>
+                  <PlayCircleIcon className="h-8 w-8 shrink-0 text-accent-500" />
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {['Search brief', 'Answer safely', 'Offer contact'].map((item) => (
+                    <div key={item} data-workflow-action className="border border-builder-border bg-builder-800 px-2 py-2 text-center text-[11px] font-medium text-gray-400">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </section>
-  );
-};
+    </div>
+  </section>
+);
 
 const LandingProfileMenu = ({ currentUser, dbUser }) => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -264,33 +549,268 @@ const LandingProfileMenu = ({ currentUser, dbUser }) => {
 const Landing = () => {
   const { currentUser, dbUser } = useAuth();
   const isSignedIn = Boolean(currentUser);
-  const shouldReduceMotion = useReducedMotion();
-  const heroRef = React.useRef(null);
-  const { scrollYProgress } = useScroll();
-  const { scrollYProgress: heroProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end start']
-  });
-  const heroY = useTransform(heroProgress, [0, 1], [0, 70]);
-  const heroOpacity = useTransform(heroProgress, [0, 0.85], [1, 0.52]);
+  const rootRef = React.useRef(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  React.useEffect(() => {
+    if (prefersReducedMotion) return undefined;
+
+    const lenis = new Lenis({
+      lerp: 0.08,
+      wheelMultiplier: 0.9
+    });
+    const updateLenis = (time) => lenis.raf(time * 1000);
+
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(updateLenis);
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      gsap.ticker.remove(updateLenis);
+      lenis.destroy();
+    };
+  }, [prefersReducedMotion]);
+
+  useGSAP(
+    () => {
+      const root = rootRef.current;
+      if (!root) return undefined;
+
+      if (prefersReducedMotion) {
+        gsap.set(root.querySelectorAll('[data-reveal], [data-hero-line], [data-stack-card], [data-workflow-node], [data-workflow-answer], [data-workflow-action]'), {
+          clearProps: 'all',
+          opacity: 1
+        });
+        return undefined;
+      }
+
+      gsap.set('[data-hero-line]', { autoAlpha: 0, y: 28 });
+      gsap.set('[data-hero-card]', { autoAlpha: 0, y: 34, rotationX: -4 });
+      gsap.set('[data-checklist-item]', { autoAlpha: 0, x: 18 });
+      gsap.set('[data-reveal]', { autoAlpha: 0, y: 26 });
+
+      gsap.timeline({ defaults: { ease: 'power3.out' } })
+        .to('[data-hero-line]', { autoAlpha: 1, y: 0, duration: 0.85, stagger: 0.08 })
+        .to('[data-hero-card]', { autoAlpha: 1, y: 0, rotateX: 0, duration: 0.8 }, 0.16)
+        .to('[data-checklist-item]', { autoAlpha: 1, x: 0, duration: 0.42, stagger: 0.055 }, 0.34);
+
+      gsap.to('[data-progress-bar]', {
+        scaleX: 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: document.documentElement,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 0.2
+        }
+      });
+
+      gsap.to('[data-hero-copy]', {
+        y: 70,
+        autoAlpha: 0.55,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '[data-hero-section]',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true
+        }
+      });
+
+      gsap.to('[data-site-header]', {
+        backgroundColor: 'rgba(30, 30, 30, 0.94)',
+        borderColor: 'rgba(51, 51, 51, 1)',
+        ease: 'none',
+        scrollTrigger: {
+          trigger: document.documentElement,
+          start: 20,
+          end: 160,
+          scrub: true
+        }
+      });
+
+      gsap.to('[data-nav-inner]', {
+        paddingTop: 12,
+        paddingBottom: 12,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: document.documentElement,
+          start: 20,
+          end: 160,
+          scrub: true
+        }
+      });
+
+      gsap.utils.toArray('[data-reveal]').forEach((element) => {
+        gsap.to(element, {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.7,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: element,
+            start: 'top 82%',
+            once: true
+          }
+        });
+      });
+
+      const mm = gsap.matchMedia();
+
+      mm.add('(min-width: 1024px)', () => {
+        gsap.utils.toArray('[data-stack-section]').forEach((section) => {
+          const cards = gsap.utils.toArray(section.querySelectorAll('[data-stack-card]'));
+          gsap.set(cards, {
+            autoAlpha: 0,
+            y: (index) => 220 + index * 40,
+            scale: 1.035
+          });
+
+          const timeline = gsap.timeline({
+            scrollTrigger: {
+              trigger: section,
+              start: 'top top',
+              end: () => `+=${Math.max(1100, cards.length * 480)}`,
+              pin: section.querySelector('[data-stack-pin]'),
+              scrub: 1,
+              invalidateOnRefresh: true
+            }
+          });
+
+          cards.forEach((card, index) => {
+            timeline.to(card, {
+              autoAlpha: 1,
+              y: index * 12,
+              scale: 1 - index * 0.018,
+              duration: 1,
+              ease: 'power2.out'
+            }, index * 0.48);
+          });
+        });
+
+        const sideSection = root.querySelector('[data-side-section]');
+        const track = root.querySelector('[data-horizontal-track]');
+        if (sideSection && track) {
+          gsap.to(track, {
+            x: () => {
+              const maxTravel = track.scrollWidth - sideSection.clientWidth + 48;
+              return maxTravel > 0 ? -maxTravel : 0;
+            },
+            ease: 'none',
+            scrollTrigger: {
+              trigger: sideSection,
+              start: 'top top',
+              end: () => `+=${Math.max(1100, track.scrollWidth - sideSection.clientWidth + 700)}`,
+              pin: true,
+              scrub: 1,
+              invalidateOnRefresh: true
+            }
+          });
+        }
+
+        const workflowSection = root.querySelector('[data-workflow-section]');
+        const workflowPath = root.querySelector('[data-workflow-path]');
+        if (workflowSection && workflowPath) {
+          const pathLength = workflowPath.getTotalLength();
+          gsap.set(workflowPath, {
+            strokeDasharray: pathLength,
+            strokeDashoffset: pathLength
+          });
+          gsap.set('[data-workflow-node], [data-workflow-answer], [data-workflow-action]', {
+            autoAlpha: 0,
+            scale: 0.78,
+            y: 18
+          });
+
+          gsap.timeline({
+            scrollTrigger: {
+              trigger: workflowSection,
+              start: 'top top',
+              end: '+=1350',
+              pin: workflowSection.querySelector('[data-workflow-pin]'),
+              scrub: 1,
+              invalidateOnRefresh: true
+            }
+          })
+            .to(workflowPath, { strokeDashoffset: 0, duration: 1.4, ease: 'none' })
+            .to('[data-workflow-node]', { autoAlpha: 1, scale: 1, y: 0, duration: 0.5, stagger: 0.22, ease: 'back.out(1.4)' }, 0.12)
+            .to('[data-workflow-answer]', { autoAlpha: 1, scale: 1, y: 0, duration: 0.45, ease: 'power2.out' }, 0.92)
+            .to('[data-workflow-action]', { autoAlpha: 1, scale: 1, y: 0, duration: 0.35, stagger: 0.12, ease: 'power2.out' }, 1.12);
+        }
+      });
+
+      mm.add('(pointer: fine)', () => {
+        const cleanups = [];
+
+        gsap.utils.toArray('[data-magnetic]').forEach((element) => {
+          const xTo = gsap.quickTo(element, 'x', { duration: 0.32, ease: 'power3.out' });
+          const yTo = gsap.quickTo(element, 'y', { duration: 0.32, ease: 'power3.out' });
+          const move = (event) => {
+            const rect = element.getBoundingClientRect();
+            xTo((event.clientX - rect.left - rect.width / 2) * 0.16);
+            yTo((event.clientY - rect.top - rect.height / 2) * 0.22);
+          };
+          const leave = () => {
+            xTo(0);
+            yTo(0);
+          };
+
+          element.addEventListener('pointermove', move);
+          element.addEventListener('pointerleave', leave);
+          cleanups.push(() => {
+            element.removeEventListener('pointermove', move);
+            element.removeEventListener('pointerleave', leave);
+          });
+        });
+
+        gsap.utils.toArray('[data-tilt-card]').forEach((element) => {
+          const rotateX = gsap.quickTo(element, 'rotationX', { duration: 0.35, ease: 'power3.out' });
+          const rotateY = gsap.quickTo(element, 'rotationY', { duration: 0.35, ease: 'power3.out' });
+          const move = (event) => {
+            const rect = element.getBoundingClientRect();
+            const relX = (event.clientX - rect.left) / rect.width - 0.5;
+            const relY = (event.clientY - rect.top) / rect.height - 0.5;
+            rotateX(relY * -5);
+            rotateY(relX * 5);
+          };
+          const leave = () => {
+            rotateX(0);
+            rotateY(0);
+          };
+
+          gsap.set(element, { transformPerspective: 900, transformOrigin: 'center' });
+          element.addEventListener('pointermove', move);
+          element.addEventListener('pointerleave', leave);
+          cleanups.push(() => {
+            element.removeEventListener('pointermove', move);
+            element.removeEventListener('pointerleave', leave);
+          });
+        });
+
+        return () => cleanups.forEach((cleanup) => cleanup());
+      });
+
+      return () => mm.revert();
+    },
+    { scope: rootRef, dependencies: [prefersReducedMotion] }
+  );
 
   return (
-    <div className="min-h-screen bg-builder-900 text-gray-200 selection:bg-accent-500 selection:text-white">
-      {!shouldReduceMotion && (
-        <motion.div
-          className="fixed left-0 top-0 z-[80] h-0.5 w-full origin-left bg-accent-500"
-          style={{ scaleX: scrollYProgress }}
-          aria-hidden="true"
-        />
-      )}
+    <div ref={rootRef} className="relative min-h-screen overflow-hidden bg-builder-900 text-gray-200 selection:bg-accent-500 selection:text-white">
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.035] noise-layer" aria-hidden="true" />
+      <div
+        data-progress-bar
+        className="fixed left-0 top-0 z-[80] h-0.5 w-full origin-left scale-x-0 bg-accent-500"
+        aria-hidden="true"
+      />
 
       <SEO
         title="Darpan360 | Managed AI Chatbot Setup for Business Websites"
         description="Darpan360 helps service providers launch business-specific AI chatbots with managed setup, website installation, domain control, and ongoing refinement."
       />
 
-      <header className="sticky top-0 z-40 border-b border-builder-border bg-builder-900/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+      <header data-site-header className="sticky top-0 z-40 border-b border-builder-border bg-builder-900/72 backdrop-blur-xl">
+        <div data-nav-inner className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link to="/" className="text-xl font-bold tracking-tight text-white">Darpan360</Link>
           <nav className="flex items-center gap-4">
             <Link to="/docs" className="text-sm font-medium text-gray-400 transition-colors hover:text-white">Service Guide</Link>
@@ -303,47 +823,30 @@ const Landing = () => {
         </div>
       </header>
 
-      <main>
-        <section ref={heroRef} className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[1fr_420px] lg:items-center">
-          <motion.div
-            style={shouldReduceMotion ? undefined : { y: heroY, opacity: heroOpacity }}
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 28 }}
-            animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: revealEase }}
-          >
-            <div className="overflow-hidden">
-              <motion.p
-                initial={shouldReduceMotion ? false : { y: 22 }}
-                animate={shouldReduceMotion ? undefined : { y: 0 }}
-                transition={{ duration: 0.7, ease: revealEase, delay: 0.05 }}
-                className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-500"
-              >
-                Managed chatbot deployment
-              </motion.p>
-            </div>
-            <h1 className="mt-5 max-w-4xl text-5xl font-bold leading-[0.95] tracking-tight text-white md:text-7xl">
+      <main className="relative z-10">
+        <section data-hero-section className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[1fr_420px] lg:items-center">
+          <div data-hero-copy>
+            <p data-hero-line className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-500">
+              Managed chatbot deployment
+            </p>
+            <h1 data-hero-line className="mt-5 max-w-4xl text-5xl font-bold leading-[0.95] tracking-tight text-white md:text-7xl">
               Install business-specific AI chat on client websites.
             </h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-gray-400">
+            <p data-hero-line className="mt-7 max-w-2xl text-lg leading-8 text-gray-400">
               Darpan360 is built for service providers who configure, install, and maintain AI chatbots for businesses. Clients provide their content. You handle setup, testing, website installation, and ongoing updates.
             </p>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-              <Link to="/docs" className="btn-primary px-6 py-3 text-base">
+            <div data-hero-line className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <MagneticLink to="/docs" className="btn-primary px-6 py-3 text-base">
                 View Service Guide
                 <ArrowRightIcon className="ml-2 h-5 w-5" />
-              </Link>
-              <Link to={isSignedIn ? '/dashboard' : '/login'} className="btn-secondary px-6 py-3 text-base">
+              </MagneticLink>
+              <MagneticLink to={isSignedIn ? '/dashboard' : '/login'} className="btn-secondary px-6 py-3 text-base">
                 {isSignedIn ? 'Open Dashboard' : 'Sign In'}
-              </Link>
+              </MagneticLink>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.aside
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 34, rotateX: -4 }}
-            animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0, rotateX: 0 }}
-            transition={{ duration: 0.75, ease: revealEase, delay: 0.18 }}
-            className="border border-builder-border bg-builder-800 p-6"
-          >
+          <aside data-hero-card className="border border-builder-border bg-builder-800 p-6">
             <div className="flex items-center justify-between border-b border-builder-border pb-4">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Client launch file</div>
@@ -352,23 +855,25 @@ const Landing = () => {
               <BookOpenIcon className="h-6 w-6 text-accent-500" />
             </div>
             <div className="mt-5 space-y-3">
-              {clientChecklist.map((item, index) => (
-                <motion.div
+              {clientChecklist.map((item) => (
+                <div
                   key={item}
-                  initial={shouldReduceMotion ? false : { opacity: 0, x: 18 }}
-                  animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
-                  transition={{ duration: 0.48, ease: revealEase, delay: 0.28 + index * 0.055 }}
+                  data-checklist-item
                   className="flex items-center justify-between border border-builder-border bg-builder-900 px-4 py-3"
                 >
                   <span className="text-sm text-gray-300">{item}</span>
                   <span className="h-2 w-2 rounded-full bg-accent-500" aria-hidden="true" />
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.aside>
+          </aside>
         </section>
 
+        <IntegrationMarquee />
+        <LaunchControlSection />
+        <ClientLaunchSection />
         <ServiceStackSection />
+        <WorkflowStorySection />
 
         <section className="mx-auto grid max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[360px_1fr]">
           <Reveal>
@@ -378,8 +883,8 @@ const Landing = () => {
             </p>
           </Reveal>
           <div className="grid gap-5 md:grid-cols-2">
-            {processSteps.map(([number, title, text], index) => (
-              <Reveal key={title} delay={index * 0.08} y={18}>
+            {processSteps.map(([number, title, text]) => (
+              <Reveal key={title}>
                 <article className="border-l border-builder-border pl-5 transition-colors hover:border-accent-500">
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">{number}</div>
                   <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
