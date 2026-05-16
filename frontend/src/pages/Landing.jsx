@@ -12,6 +12,7 @@ import {
   UserCircleIcon,
   WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import { SEO } from '../utils/seo';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/useAuth';
@@ -56,6 +57,8 @@ const clientChecklist = [
 ];
 
 const creatorCreditUrl = 'https://piyushratan.in/work/darpan360';
+const revealViewport = { once: true, amount: 0.32 };
+const revealEase = [0.22, 1, 0.36, 1];
 
 const getInitials = (user) => {
   const source = user?.displayName || user?.email || 'Operator';
@@ -65,6 +68,104 @@ const getInitials = (user) => {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('') || 'O';
+};
+
+const Reveal = ({ children, className = '', delay = 0, y = 24 }) => {
+  const shouldReduceMotion = useReducedMotion();
+
+  if (shouldReduceMotion) {
+    return <div className={className}>{children}</div>;
+  }
+
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={revealViewport}
+      transition={{ duration: 0.62, ease: revealEase, delay }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+const StackedServiceCard = ({ item, index, total, progress }) => {
+  const shouldReduceMotion = useReducedMotion();
+  const start = Math.max(0, (index - 0.5) / total);
+  const middle = Math.min(1, (index + 0.15) / total);
+  const end = Math.min(1, (index + 1) / total);
+  const y = useTransform(progress, [start, end], [index * 28, index * 8]);
+  const scale = useTransform(progress, [start, end], [1, 1 - index * 0.018]);
+  const opacity = useTransform(progress, [start, middle, end], [0.72, 1, 1]);
+  const Icon = item.icon;
+
+  return (
+    <motion.article
+      style={{
+        top: `calc(5rem + ${index * 18}px)`,
+        zIndex: index + 1,
+        ...(shouldReduceMotion ? {} : { y, scale, opacity })
+      }}
+      className="border border-builder-border bg-builder-800 p-5 shadow-sm transition-colors hover:border-gray-600 lg:sticky"
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+            Service layer {String(index + 1).padStart(2, '0')}
+          </div>
+          <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">{item.title}</h3>
+          <p className="mt-3 text-sm leading-6 text-gray-400">{item.text}</p>
+        </div>
+      </div>
+    </motion.article>
+  );
+};
+
+const ServiceStackSection = () => {
+  const sectionRef = React.useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start end', 'end start']
+  });
+
+  return (
+    <section ref={sectionRef} className="border-y border-builder-border bg-builder-900 py-16 lg:py-0">
+      <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:min-h-[185vh] lg:grid-cols-[0.78fr_1.22fr]">
+        <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
+          <Reveal>
+            <div className="max-w-2xl">
+              <div className="mb-5 h-px w-16 bg-accent-500" aria-hidden="true" />
+              <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
+                What the service delivers
+              </h2>
+              <p className="mt-5 text-sm leading-7 text-gray-400">
+                A client does not need to understand API keys, hosting, prompts, or Firebase. The value is a configured assistant installed on their website and maintained by you.
+              </p>
+              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Managed delivery sequence
+              </p>
+            </div>
+          </Reveal>
+        </div>
+
+        <div className="space-y-4 lg:py-24">
+          {deliveryItems.map((item, index) => (
+            <StackedServiceCard
+              key={item.title}
+              item={item}
+              index={index}
+              total={deliveryItems.length}
+              progress={scrollYProgress}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 const LandingProfileMenu = ({ currentUser, dbUser }) => {
@@ -163,15 +264,32 @@ const LandingProfileMenu = ({ currentUser, dbUser }) => {
 const Landing = () => {
   const { currentUser, dbUser } = useAuth();
   const isSignedIn = Boolean(currentUser);
+  const shouldReduceMotion = useReducedMotion();
+  const heroRef = React.useRef(null);
+  const { scrollYProgress } = useScroll();
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start']
+  });
+  const heroY = useTransform(heroProgress, [0, 1], [0, 70]);
+  const heroOpacity = useTransform(heroProgress, [0, 0.85], [1, 0.52]);
 
   return (
     <div className="min-h-screen bg-builder-900 text-gray-200 selection:bg-accent-500 selection:text-white">
+      {!shouldReduceMotion && (
+        <motion.div
+          className="fixed left-0 top-0 z-[80] h-0.5 w-full origin-left bg-accent-500"
+          style={{ scaleX: scrollYProgress }}
+          aria-hidden="true"
+        />
+      )}
+
       <SEO
         title="Darpan360 | Managed AI Chatbot Setup for Business Websites"
         description="Darpan360 helps service providers launch business-specific AI chatbots with managed setup, website installation, domain control, and ongoing refinement."
       />
 
-      <header className="border-b border-builder-border bg-builder-900/95">
+      <header className="sticky top-0 z-40 border-b border-builder-border bg-builder-900/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link to="/" className="text-xl font-bold tracking-tight text-white">Darpan360</Link>
           <nav className="flex items-center gap-4">
@@ -186,9 +304,23 @@ const Landing = () => {
       </header>
 
       <main>
-        <section className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[1fr_420px] lg:items-center">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-500">Managed chatbot deployment</p>
+        <section ref={heroRef} className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[1fr_420px] lg:items-center">
+          <motion.div
+            style={shouldReduceMotion ? undefined : { y: heroY, opacity: heroOpacity }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 28 }}
+            animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: revealEase }}
+          >
+            <div className="overflow-hidden">
+              <motion.p
+                initial={shouldReduceMotion ? false : { y: 22 }}
+                animate={shouldReduceMotion ? undefined : { y: 0 }}
+                transition={{ duration: 0.7, ease: revealEase, delay: 0.05 }}
+                className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-500"
+              >
+                Managed chatbot deployment
+              </motion.p>
+            </div>
             <h1 className="mt-5 max-w-4xl text-5xl font-bold leading-[0.95] tracking-tight text-white md:text-7xl">
               Install business-specific AI chat on client websites.
             </h1>
@@ -204,9 +336,14 @@ const Landing = () => {
                 {isSignedIn ? 'Open Dashboard' : 'Operator Sign In'}
               </Link>
             </div>
-          </div>
+          </motion.div>
 
-          <aside className="border border-builder-border bg-builder-800 p-6">
+          <motion.aside
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 34, rotateX: -4 }}
+            animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0, rotateX: 0 }}
+            transition={{ duration: 0.75, ease: revealEase, delay: 0.18 }}
+            className="border border-builder-border bg-builder-800 p-6"
+          >
             <div className="flex items-center justify-between border-b border-builder-border pb-4">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Client launch file</div>
@@ -215,58 +352,46 @@ const Landing = () => {
               <BookOpenIcon className="h-6 w-6 text-accent-500" />
             </div>
             <div className="mt-5 space-y-3">
-              {clientChecklist.map((item) => (
-                <div key={item} className="flex items-center justify-between border border-builder-border bg-builder-900 px-4 py-3">
+              {clientChecklist.map((item, index) => (
+                <motion.div
+                  key={item}
+                  initial={shouldReduceMotion ? false : { opacity: 0, x: 18 }}
+                  animate={shouldReduceMotion ? undefined : { opacity: 1, x: 0 }}
+                  transition={{ duration: 0.48, ease: revealEase, delay: 0.28 + index * 0.055 }}
+                  className="flex items-center justify-between border border-builder-border bg-builder-900 px-4 py-3"
+                >
                   <span className="text-sm text-gray-300">{item}</span>
                   <span className="h-2 w-2 rounded-full bg-accent-500" aria-hidden="true" />
-                </div>
+                </motion.div>
               ))}
             </div>
-          </aside>
+          </motion.aside>
         </section>
 
-        <section className="border-y border-builder-border bg-builder-900 py-16">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="max-w-2xl">
-              <h2 className="text-3xl font-semibold tracking-tight text-white">What the service delivers</h2>
-              <p className="mt-3 text-sm leading-6 text-gray-400">
-                A client does not need to understand API keys, hosting, prompts, or Firebase. The value is a configured assistant installed on their website and maintained by you.
-              </p>
-            </div>
-            <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {deliveryItems.map(({ icon, title, text }) => (
-                <article key={title} className="border border-builder-border bg-builder-800 p-5">
-                  <div className="flex h-10 w-10 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
-                    {React.createElement(icon, { className: 'h-5 w-5' })}
-                  </div>
-                  <h3 className="mt-5 text-base font-semibold text-white">{title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-gray-400">{text}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
+        <ServiceStackSection />
 
         <section className="mx-auto grid max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[360px_1fr]">
-          <div>
+          <Reveal>
             <h2 className="text-3xl font-semibold tracking-tight text-white">A repeatable launch workflow</h2>
             <p className="mt-4 text-sm leading-6 text-gray-400">
               The system is designed for repeated client deployments. Build once, configure per business, then keep improving each assistant from one operator dashboard.
             </p>
-          </div>
+          </Reveal>
           <div className="grid gap-5 md:grid-cols-2">
-            {processSteps.map(([number, title, text]) => (
-              <article key={title} className="border-l border-builder-border pl-5">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">{number}</div>
-                <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-400">{text}</p>
-              </article>
+            {processSteps.map(([number, title, text], index) => (
+              <Reveal key={title} delay={index * 0.08} y={18}>
+                <article className="border-l border-builder-border pl-5 transition-colors hover:border-accent-500">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">{number}</div>
+                  <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-400">{text}</p>
+                </article>
+              </Reveal>
             ))}
           </div>
         </section>
 
         <section className="border-t border-builder-border bg-builder-800 py-14">
-          <div className="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[1fr_420px] lg:items-center">
+          <Reveal className="mx-auto grid max-w-7xl gap-8 px-6 lg:grid-cols-[1fr_420px] lg:items-center">
             <div>
               <h2 className="text-3xl font-semibold tracking-tight text-white">Open-source code, service-ready operation.</h2>
               <p className="mt-4 text-sm leading-6 text-gray-400">
@@ -282,7 +407,7 @@ const Landing = () => {
                 {isSignedIn ? 'Configure a client bot' : 'Operator Sign In'}
               </Link>
             </div>
-          </div>
+          </Reveal>
         </section>
       </main>
 
