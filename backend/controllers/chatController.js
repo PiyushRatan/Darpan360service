@@ -94,6 +94,7 @@ const getBotConfig = async (req, res) => {
             botName: bot.botName,
             primaryColor: bot.primaryColor,
             avatarImgUrl: bot.avatarImgUrl,
+            welcomeMessage: bot.welcomeMessage,
             allowedDomains: bot.allowedDomains
         });
     } catch (error) {

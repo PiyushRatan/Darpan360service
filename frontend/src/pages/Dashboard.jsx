@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon, BookOpenIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon, BookOpenIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
 import { secureFetch } from '../utils/api';
 import { auth } from '../config/firebase';
 import { SubPageLoader } from '../components/Loaders';
+import {
+  ASSISTANT_ROLES,
+  BASE_GENERATOR_FIELDS,
+  CAPABILITY_OPTIONS,
+  LANGUAGE_STYLES,
+  ROLE_GENERATOR_HINTS,
+  buildOpeningMessage,
+  buildSystemContext,
+  getRoleById,
+  getToneOptions
+} from '../config/assistantSetup';
 
 const trimTrailingSlash = (value) => (value || '').replace(/\/$/, '');
 
@@ -29,6 +40,29 @@ const createEmbedScript = (bot) => {
   return `<script src="${getFrontendBaseUrl()}/widget.js" data-bot-id="${escapeHtmlAttribute(bot._id)}"${avatarAttribute} crossorigin="anonymous"></script>`;
 };
 
+const DEFAULT_CAPABILITIES = ['answer-questions', 'generate-text', 'workflow-help'];
+const MAX_ALLOWED_DOMAINS = 2;
+
+const createEmptyGeneratorAnswers = () => (
+  BASE_GENERATOR_FIELDS.reduce((answers, field) => ({ ...answers, [field.id]: '' }), {})
+);
+
+const normalizeDomainInput = (value) => {
+  const trimmed = String(value || '').trim().toLowerCase();
+  if (!trimmed) return '';
+
+  try {
+    return new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`).hostname.replace(/^www\./, '');
+  } catch {
+    return trimmed.split('/')[0].split(':')[0].replace(/^www\./, '');
+  }
+};
+
+const isValidDomainInput = (domain) => (
+  domain === 'localhost'
+  || /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)
+);
+
 const Dashboard = () => {
   const { currentUser, dbUser } = useAuth();
   const navigate = useNavigate();
@@ -44,12 +78,23 @@ const Dashboard = () => {
   const [formData, setFormData] = useState({
     id: null,
     botName: '',
-    allowedDomains: '', // We use a comma-separated string in the UI
-    systemContext: 'You are a helpful assistant.',
+    assistantRole: 'general-assistant',
+    languageStyle: 'english',
+    tone: 'Professional',
+    capabilities: DEFAULT_CAPABILITIES,
+    allowedDomains: [],
+    welcomeMessage: '',
+    systemContext: '',
+    advancedInstructions: '',
     knowledgeBaseText: '',
     primaryColor: '#2563EB',
     avatarImgUrl: ''
   });
+  const [domainDraft, setDomainDraft] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
+  const [generatorAnswers, setGeneratorAnswers] = useState(createEmptyGeneratorAnswers);
+  const [generatingReference, setGeneratingReference] = useState(false);
 
   // Notification State for Copying
   const [copiedId, setCopiedId] = useState(null);
@@ -110,12 +155,23 @@ const Dashboard = () => {
 
   const openModal = (mode, bot = null) => {
     setModalMode(mode);
+    setDomainDraft('');
+    setShowAdvanced(false);
+    setGeneratorAnswers(createEmptyGeneratorAnswers());
     if (mode === 'edit' && bot) {
+      const assistantRole = bot.assistantRole || 'general-assistant';
+      const toneOptions = getToneOptions(assistantRole);
       setFormData({
         id: bot._id,
         botName: bot.botName,
-        allowedDomains: bot.allowedDomains.join(', '), // Convert array back to string
+        assistantRole,
+        languageStyle: bot.languageStyle || 'english',
+        tone: toneOptions.includes(bot.tone) ? bot.tone : toneOptions[0],
+        capabilities: Array.isArray(bot.capabilities) && bot.capabilities.length > 0 ? bot.capabilities : DEFAULT_CAPABILITIES,
+        allowedDomains: Array.isArray(bot.allowedDomains) ? bot.allowedDomains.slice(0, MAX_ALLOWED_DOMAINS) : [],
+        welcomeMessage: bot.welcomeMessage || '',
         systemContext: bot.systemContext || '',
+        advancedInstructions: bot.advancedInstructions || '',
         knowledgeBaseText: bot.knowledgeBaseText || '',
         primaryColor: bot.primaryColor || '#2563EB',
         avatarImgUrl: bot.avatarImgUrl || ''
@@ -124,14 +180,169 @@ const Dashboard = () => {
       setFormData({
         id: null,
         botName: '',
-        allowedDomains: 'localhost',
-        systemContext: 'You are a professional, helpful assistant. Answer questions strictly based ONLY on the provided Knowledge Base below.',
+        assistantRole: 'general-assistant',
+        languageStyle: 'english',
+        tone: 'Professional',
+        capabilities: DEFAULT_CAPABILITIES,
+        allowedDomains: [],
+        welcomeMessage: '',
+        systemContext: '',
+        advancedInstructions: '',
         knowledgeBaseText: '',
         primaryColor: '#2563EB',
         avatarImgUrl: ''
       });
     }
     setIsModalOpen(true);
+  };
+
+  const updateAssistantRole = (assistantRole) => {
+    const toneOptions = getToneOptions(assistantRole);
+    setFormData(prev => ({
+      ...prev,
+      assistantRole,
+      tone: toneOptions.includes(prev.tone) ? prev.tone : toneOptions[0]
+    }));
+    pushToast({
+      type: 'info',
+      title: 'Role updated',
+      message: `${getRoleById(assistantRole).label} behavior selected.`
+    });
+  };
+
+  const toggleCapability = (capabilityId) => {
+    setFormData(prev => {
+      const hasCapability = prev.capabilities.includes(capabilityId);
+      const capabilities = hasCapability
+        ? prev.capabilities.filter(item => item !== capabilityId)
+        : [...prev.capabilities, capabilityId];
+
+      return {
+        ...prev,
+        capabilities: capabilities.length > 0 ? capabilities : ['answer-questions']
+      };
+    });
+  };
+
+  const handleAddDomain = () => {
+    const domain = normalizeDomainInput(domainDraft);
+
+    if (!domain) return;
+
+    if (!isValidDomainInput(domain)) {
+      pushToast({
+        type: 'error',
+        title: 'Invalid domain',
+        message: 'Use a real domain like example.com or localhost.'
+      });
+      return;
+    }
+
+    if (formData.allowedDomains.includes(domain)) {
+      pushToast({
+        type: 'info',
+        title: 'Domain already added',
+        message: `${domain} is already in the whitelist.`
+      });
+      setDomainDraft('');
+      return;
+    }
+
+    if (formData.allowedDomains.length >= MAX_ALLOWED_DOMAINS) {
+      pushToast({
+        type: 'error',
+        title: 'Domain limit reached',
+        message: `Only ${MAX_ALLOWED_DOMAINS} domains can be added for one chatbot.`
+      });
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      allowedDomains: [...prev.allowedDomains, domain]
+    }));
+    setDomainDraft('');
+    pushToast({
+      type: 'success',
+      title: 'Domain added',
+      message: `${domain} can use this widget.`
+    });
+  };
+
+  const handleRemoveDomain = (domain) => {
+    setFormData(prev => ({
+      ...prev,
+      allowedDomains: prev.allowedDomains.filter(item => item !== domain)
+    }));
+    pushToast({
+      type: 'info',
+      title: 'Domain removed',
+      message: `${domain} was removed from this bot.`
+    });
+  };
+
+  const openReferenceGenerator = () => {
+    setGeneratorAnswers(prev => ({
+      ...prev,
+      businessName: prev.businessName || formData.botName
+    }));
+    setIsGeneratorOpen(true);
+  };
+
+  const handleGenerateReference = async () => {
+    const hasAnyAnswer = Object.values(generatorAnswers).some(value => String(value || '').trim());
+
+    if (!hasAnyAnswer) {
+      pushToast({
+        type: 'error',
+        title: 'Add a little context',
+        message: 'Answer at least one question before generating reference data.'
+      });
+      return;
+    }
+
+    try {
+      setGeneratingReference(true);
+      pushToast({
+        type: 'info',
+        title: 'Generating reference data',
+        message: 'Preparing a clean knowledge base and opening message.'
+      });
+
+      const data = await secureFetch('/bots/generate-reference', {
+        method: 'POST',
+        body: JSON.stringify({
+          assistantRole: getRoleById(formData.assistantRole).label,
+          languageStyle: LANGUAGE_STYLES.find(item => item.id === formData.languageStyle)?.label || 'English',
+          tone: formData.tone,
+          capabilities: CAPABILITY_OPTIONS
+            .filter(item => formData.capabilities.includes(item.id))
+            .map(item => item.label),
+          answers: generatorAnswers
+        })
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        knowledgeBaseText: data.knowledgeBaseText || prev.knowledgeBaseText,
+        welcomeMessage: data.welcomeMessage || prev.welcomeMessage
+      }));
+      setIsGeneratorOpen(false);
+      pushToast({
+        type: 'success',
+        title: 'Reference data generated',
+        message: data.message || 'The draft was added to this bot.'
+      });
+    } catch (error) {
+      console.error("Reference generation error:", error);
+      pushToast({
+        type: 'error',
+        title: 'Generation failed',
+        message: getErrorMessage(error, 'Try again or paste the reference data manually.')
+      });
+    } finally {
+      setGeneratingReference(false);
+    }
   };
 
   const handleSaveBot = async () => {
@@ -153,26 +364,33 @@ const Dashboard = () => {
       return;
     }
 
-    // Convert comma-separated string to an array of domains, trimming whitespace
     const parsedDomains = formData.allowedDomains
-      .split(',')
-      .map(d => d.trim())
-      .filter(d => d.length > 0);
+      .map(normalizeDomainInput)
+      .filter(Boolean);
 
-    if (parsedDomains.length > 20) {
+    if (parsedDomains.length > MAX_ALLOWED_DOMAINS) {
       pushToast({
         type: 'error',
         title: 'Too many domains',
-        message: 'Add no more than 20 allowed domains for one chatbot.'
+        message: `Add no more than ${MAX_ALLOWED_DOMAINS} domains for one chatbot.`
       });
       return;
     }
 
-    if (parsedDomains.some(domain => domain.length > 253)) {
+    if (parsedDomains.some(domain => domain.length > 253 || !isValidDomainInput(domain))) {
       pushToast({
         type: 'error',
         title: 'Invalid domain',
-        message: 'Each allowed domain must be under 253 characters.'
+        message: 'Use valid domains like example.com or localhost.'
+      });
+      return;
+    }
+
+    if (!formData.knowledgeBaseText.trim() || formData.knowledgeBaseText.trim().length < 20) {
+      pushToast({
+        type: 'error',
+        title: 'Reference data required',
+        message: 'Add business facts, FAQs, services, or use Help me generate before saving.'
       });
       return;
     }
@@ -190,11 +408,20 @@ const Dashboard = () => {
       }
     }
 
+    const generatedSystemContext = buildSystemContext(formData);
+    const generatedWelcomeMessage = formData.welcomeMessage.trim() || buildOpeningMessage(formData);
+
     const payload = {
         botName: formData.botName.trim(),
+        assistantRole: formData.assistantRole,
+        languageStyle: formData.languageStyle,
+        tone: formData.tone,
+        capabilities: formData.capabilities,
         allowedDomains: parsedDomains,
-        systemContext: formData.systemContext,
-        knowledgeBaseText: formData.knowledgeBaseText,
+        welcomeMessage: generatedWelcomeMessage,
+        systemContext: generatedSystemContext,
+        advancedInstructions: formData.advancedInstructions.trim(),
+        knowledgeBaseText: formData.knowledgeBaseText.trim(),
         primaryColor: formData.primaryColor,
         avatarImgUrl: formData.avatarImgUrl.trim()
     };
@@ -209,7 +436,9 @@ const Dashboard = () => {
         pushToast({
           type: 'success',
           title: 'Bot created',
-          message: 'Your chatbot is ready to configure and embed.'
+          message: formData.welcomeMessage.trim()
+            ? 'Your chatbot is ready to configure and embed.'
+            : 'Opening message was generated and your chatbot is ready.'
         });
       } else if (modalMode === 'edit') {
         await secureFetch(`/bots/${formData.id}`, {
@@ -437,7 +666,13 @@ const Dashboard = () => {
                   <div className="flex justify-between items-center pb-2 border-b border-builder-border/50 truncate">
                     <span className="text-gray-400 shrink-0 mr-4">Allowed Domains</span>
                     <span className="text-gray-200 font-medium truncate">
-                      {bot.allowedDomains.length > 0 ? bot.allowedDomains.join(', ') : 'Any Domain'}
+                      {(bot.allowedDomains || []).length > 0 ? bot.allowedDomains.join(', ') : 'Any Domain'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-builder-border/50 truncate">
+                    <span className="text-gray-400 shrink-0 mr-4">Assistant Role</span>
+                    <span className="text-gray-200 font-medium truncate">
+                      {getRoleById(bot.assistantRole).label}
                     </span>
                   </div>
                 </div>
@@ -481,77 +716,258 @@ const Dashboard = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-builder-800 border border-builder-border rounded p-6 w-full max-w-2xl shadow-2xl my-8"
+              className="bg-builder-800 border border-builder-border rounded p-6 w-full max-w-5xl shadow-2xl my-8"
             >
               <h3 className="text-xl font-bold text-white mb-2">
                 {modalMode === 'create' ? 'Create New Bot' : 'Configure Bot'}
               </h3>
-              <p className="text-gray-400 text-sm mb-6">Define the specific AI context and knowledge data below.</p>
+              <p className="text-gray-400 text-sm mb-6">Configure this like an AI employee. The technical prompt is built in the background.</p>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* Core Settings */}
-                <div className="border-b border-builder-border pb-4">
-                  <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Internal Bot Name</label>
-                  <input type="text" className="input-field shadow-inner" value={formData.botName} onChange={e => setFormData({...formData, botName: e.target.value})} placeholder="e.g. Enterprise Sales Agent" />
+                <div className="grid gap-4 md:grid-cols-[1fr_180px_1fr]">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Assistant Name</label>
+                    <input type="text" className="input-field shadow-inner" value={formData.botName} onChange={e => setFormData({...formData, botName: e.target.value})} placeholder="e.g. Dolphin 360 Assistant" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Brand Color</label>
+                    <input type="text" className="input-field shadow-inner" value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} placeholder="#2563EB" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Avatar / Logo URL</label>
+                    <input type="text" className="input-field shadow-inner" value={formData.avatarImgUrl} onChange={e => setFormData({...formData, avatarImgUrl: e.target.value})} placeholder="https://example.com/logo.png" />
+                  </div>
                 </div>
 
-                {/* Domains */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Domain Whitelist (Comma Separated)</label>
-                  <input type="text" className="input-field shadow-inner" value={formData.allowedDomains} onChange={e => setFormData({...formData, allowedDomains: e.target.value})} placeholder="e.g. localhost, acme.com" />
-                </div>
-
-                {/* AI Configuration */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide flex justify-between">
-                    <span>System Prompt</span>
-                  </label>
-                  <textarea 
-                    className="input-field min-h-[60px] shadow-inner" 
-                    value={formData.systemContext}
-                    onChange={e => setFormData({...formData, systemContext: e.target.value})}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide flex justify-between">
-                    <span>Knowledge Base Content</span>
-                  </label>
-                  <textarea 
-                    className="input-field min-h-[140px] shadow-inner border-accent-500/30" 
-                    value={formData.knowledgeBaseText}
-                    onChange={e => setFormData({...formData, knowledgeBaseText: e.target.value})}
-                    placeholder="Paste all company FAQs, pricing tables, or context here..."
-                  />
-                </div>
-                
-                {/* Aesthetic Configuration */}
-                <div>
-                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2 border-b border-builder-border pb-2 mt-4">
-                    <span className="bg-accent-500/20 text-accent-500 px-2 py-0.5 rounded text-xs">UI Options</span> 
-                    Interface Customization
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 mt-3">
+                <div className="border border-builder-border bg-builder-900/50 p-4">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Brand Color (Hex)</label>
-                      <input type="text" className="input-field shadow-inner" value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} placeholder="#2563EB" />
+                      <h4 className="text-sm font-semibold text-white">Assistant Role</h4>
+                      <p className="mt-1 text-xs text-gray-500">Choose the job this AI should perform.</p>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide flex justify-between">
-                        Bot Avatar Image URL
-                        <span className="text-[9px] text-accent-500 ml-2 normal-case truncate">(Max size 2MB link)</span>
-                      </label>
-                      <input type="text" className="input-field shadow-inner" value={formData.avatarImgUrl} onChange={e => setFormData({...formData, avatarImgUrl: e.target.value})} placeholder="https://example.com/logo.png" />
+                    <div className="text-xs font-semibold text-accent-500">{getRoleById(formData.assistantRole).label}</div>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {ASSISTANT_ROLES.map((role) => {
+                      const selected = formData.assistantRole === role.id;
+                      return (
+                        <button
+                          key={role.id}
+                          type="button"
+                          onClick={() => updateAssistantRole(role.id)}
+                          className={`border p-3 text-left transition-colors ${selected ? 'border-accent-500 bg-accent-500/10 text-white' : 'border-builder-border bg-builder-800 text-gray-300 hover:border-gray-600 hover:text-white'}`}
+                        >
+                          <div className="text-sm font-semibold">{role.label}</div>
+                          <div className="mt-1 text-xs leading-5 text-gray-500">{role.description}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Language Style</label>
+                    <select
+                      className="input-field shadow-inner"
+                      value={formData.languageStyle}
+                      onChange={e => setFormData({...formData, languageStyle: e.target.value})}
+                    >
+                      {LANGUAGE_STYLES.map((language) => (
+                        <option key={language.id} value={language.id}>{language.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Tone</label>
+                    <div className="flex flex-wrap gap-2">
+                      {getToneOptions(formData.assistantRole).map((tone) => (
+                        <button
+                          key={tone}
+                          type="button"
+                          onClick={() => setFormData({...formData, tone})}
+                          className={`border px-3 py-2 text-xs font-semibold transition-colors ${formData.tone === tone ? 'border-accent-500 bg-accent-500/15 text-white' : 'border-builder-border text-gray-400 hover:border-gray-600 hover:text-white'}`}
+                        >
+                          {tone}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
 
+                <div className="border border-builder-border bg-builder-900/50 p-4">
+                  <h4 className="text-sm font-semibold text-white">Capabilities</h4>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {CAPABILITY_OPTIONS.map((capability) => (
+                      <label key={capability.id} className="flex items-center gap-2 border border-builder-border bg-builder-800 px-3 py-2 text-sm text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={formData.capabilities.includes(capability.id)}
+                          onChange={() => toggleCapability(capability.id)}
+                          className="h-4 w-4 accent-accent-500"
+                        />
+                        {capability.label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4 border-l-2 border-amber-400/70 bg-amber-400/5 p-3 text-xs leading-6 text-gray-300">
+                    <p className="font-semibold text-amber-200">Capability notice</p>
+                    <p className="mt-1">This AI can answer questions, generate text, and help with workflows.</p>
+                    <p className="mt-2 text-gray-400">It cannot physically perform tasks, make phone calls, book appointments automatically, access private accounts unless connected, or guarantee perfect accuracy.</p>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Allowed Website Domains</label>
+                      <p className="text-xs text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} domains. Leave empty only when the bot can run anywhere.</p>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-500">{formData.allowedDomains.length}/{MAX_ALLOWED_DOMAINS}</span>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      type="text"
+                      className="input-field shadow-inner"
+                      value={domainDraft}
+                      onChange={e => setDomainDraft(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddDomain();
+                        }
+                      }}
+                      placeholder="example.com"
+                    />
+                    <button type="button" onClick={handleAddDomain} className="btn-secondary shrink-0">Add</button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {formData.allowedDomains.length === 0 ? (
+                      <span className="border border-dashed border-builder-border px-3 py-2 text-xs text-gray-500">Any domain allowed</span>
+                    ) : formData.allowedDomains.map((domain) => (
+                      <span key={domain} className="inline-flex items-center gap-2 border border-builder-border bg-builder-900 px-3 py-2 text-xs font-semibold text-gray-200">
+                        {domain}
+                        <button type="button" onClick={() => handleRemoveDomain(domain)} className="text-gray-500 hover:text-red-300" aria-label={`Remove ${domain}`}>
+                          <XMarkIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
+                        Reference Data <span className="text-red-300">*</span>
+                      </label>
+                      <p className="text-xs text-gray-500">Facts, FAQs, services, rules, and handoff details the assistant should know.</p>
+                    </div>
+                    <button type="button" onClick={openReferenceGenerator} className="btn-secondary text-sm">
+                      <SparklesIcon className="mr-2 h-4 w-4" />
+                      Help me generate
+                    </button>
+                  </div>
+                  <textarea
+                    className="input-field mt-3 min-h-[170px] shadow-inner border-accent-500/30"
+                    value={formData.knowledgeBaseText}
+                    onChange={e => setFormData({...formData, knowledgeBaseText: e.target.value})}
+                    placeholder="Paste client services, FAQs, pricing notes, policies, working hours, and handoff instructions..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Opening Message</label>
+                  <textarea
+                    className="input-field min-h-[74px] shadow-inner"
+                    value={formData.welcomeMessage}
+                    onChange={e => setFormData({...formData, welcomeMessage: e.target.value})}
+                    placeholder={buildOpeningMessage(formData)}
+                  />
+                </div>
+
+                <div className="border-t border-builder-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(prev => !prev)}
+                    className="text-sm font-semibold text-accent-500 hover:text-accent-600"
+                  >
+                    {showAdvanced ? 'Hide advanced customization' : 'Show advanced customization'}
+                  </button>
+                  {showAdvanced && (
+                    <div className="mt-3">
+                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Additional Instructions</label>
+                      <textarea
+                        className="input-field min-h-[90px] shadow-inner"
+                        value={formData.advancedInstructions}
+                        onChange={e => setFormData({...formData, advancedInstructions: e.target.value})}
+                        placeholder="Optional rules for edge cases, escalation, words to avoid, or brand-specific behavior."
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-builder-border">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
                 <button onClick={handleSaveBot} disabled={saving} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {saving ? 'Saving...' : modalMode === 'create' ? 'Create' : 'Save Changes'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isGeneratorOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              className="w-full max-w-2xl border border-builder-border bg-builder-800 p-6 shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Generate Reference Data</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-400">
+                    Answer a few simple questions. The AI will turn them into clean reference data and an opening message.
+                  </p>
+                </div>
+                <button type="button" onClick={() => setIsGeneratorOpen(false)} className="text-gray-500 hover:text-white" aria-label="Close generator">
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              {ROLE_GENERATOR_HINTS[formData.assistantRole] && (
+                <div className="mt-4 border border-accent-500/30 bg-accent-500/10 p-3 text-xs leading-5 text-accent-100">
+                  {ROLE_GENERATOR_HINTS[formData.assistantRole]}
+                </div>
+              )}
+
+              <div className="mt-5 grid gap-4">
+                {BASE_GENERATOR_FIELDS.map((field) => (
+                  <label key={field.id} className="block">
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">{field.label}</span>
+                    <textarea
+                      className="input-field mt-1 min-h-[64px] shadow-inner"
+                      value={generatorAnswers[field.id] || ''}
+                      onChange={e => setGeneratorAnswers(prev => ({ ...prev, [field.id]: e.target.value }))}
+                      placeholder={field.placeholder}
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 border-t border-builder-border pt-4">
+                <button type="button" onClick={() => setIsGeneratorOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleGenerateReference} disabled={generatingReference} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
+                  <SparklesIcon className="mr-2 h-4 w-4" />
+                  {generatingReference ? 'Generating...' : 'Generate Draft'}
                 </button>
               </div>
             </motion.div>

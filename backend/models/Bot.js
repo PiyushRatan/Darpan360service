@@ -5,8 +5,13 @@ const bots = db.collection('bots');
 
 const DEFAULT_BOT = {
     botName: 'Darpan360 Assistant',
+    assistantRole: 'general-assistant',
+    languageStyle: 'english',
+    tone: 'professional',
+    capabilities: ['answer-questions', 'generate-text', 'workflow-help'],
     welcomeMessage: 'Hello! I am the AI Assistant. How can I help you today?',
     systemContext: 'You are a helpful assistant.',
+    advancedInstructions: '',
     knowledgeBaseText: '',
     primaryColor: '#1E1E1E',
     avatarImgUrl: '',
@@ -50,12 +55,23 @@ const normalizeBot = (payload, existing = {}) => {
     return {
         firebaseUid: source.firebaseUid,
         botName: cleanString(source.botName, DEFAULT_BOT.botName, 120),
+        assistantRole: cleanString(source.assistantRole, DEFAULT_BOT.assistantRole, 80),
+        languageStyle: cleanString(source.languageStyle, DEFAULT_BOT.languageStyle, 80),
+        tone: cleanString(source.tone, DEFAULT_BOT.tone, 80),
+        capabilities: Array.isArray(source.capabilities)
+            ? source.capabilities
+                .filter((capability) => typeof capability === 'string')
+                .map((capability) => capability.trim())
+                .filter(Boolean)
+                .slice(0, 8)
+            : DEFAULT_BOT.capabilities,
         welcomeMessage: cleanString(source.welcomeMessage, DEFAULT_BOT.welcomeMessage, 500),
         systemContext: cleanString(source.systemContext, DEFAULT_BOT.systemContext, 4000),
+        advancedInstructions: cleanString(source.advancedInstructions, DEFAULT_BOT.advancedInstructions, 2000),
         knowledgeBaseText: cleanString(source.knowledgeBaseText, DEFAULT_BOT.knowledgeBaseText, 20000),
         primaryColor,
         avatarImgUrl: cleanString(source.avatarImgUrl, DEFAULT_BOT.avatarImgUrl, 1000),
-        allowedDomains
+        allowedDomains: allowedDomains.slice(0, 2)
     };
 };
 

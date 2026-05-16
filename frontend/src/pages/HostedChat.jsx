@@ -52,7 +52,8 @@ const HostedChat = () => {
         const nextConfig = {
           name: configData.botName || "AI Assistant",
           color: configData.primaryColor || "#2563EB", 
-          avatar: configData.avatarImgUrl || ""
+          avatar: configData.avatarImgUrl || "",
+          welcomeMessage: configData.welcomeMessage || "Hello! I am your AI Assistant. How can I help you today?"
         };
 
         setBotConfig(nextConfig);
@@ -66,7 +67,7 @@ const HostedChat = () => {
             setMessages(historyData.messages);
         } else {
             // New user, push the welcome message
-            setMessages([{ role: 'model', content: "Hello! I am your AI Assistant. How can I help you today?" }]);
+            setMessages([{ role: 'model', content: nextConfig.welcomeMessage }]);
         }
 
       } catch (error) {
@@ -107,7 +108,8 @@ const HostedChat = () => {
             ...prev,
             name: data.botName,
             avatar: data.avatarImgUrl,
-            color: data.primaryColor || prev?.color
+            color: data.primaryColor || prev?.color,
+            welcomeMessage: prev?.welcomeMessage
           };
           postWidgetConfig(botId, nextConfig);
           return nextConfig;

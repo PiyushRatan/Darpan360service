@@ -24,6 +24,97 @@ const getNumberedEnvValues = (prefix) => (
         ))
 );
 
+const stripJsonFence = (text) => String(text || '')
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+
+const parseGeneratedSetup = (text) => {
+    const cleaned = stripJsonFence(text);
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+
+    return {
+        knowledgeBaseText: String(parsed.knowledgeBaseText || '').trim().slice(0, 20000),
+        welcomeMessage: String(parsed.welcomeMessage || '').trim().slice(0, 500)
+    };
+};
+
+const createFallbackSetupDraft = ({ assistantRole, languageStyle, tone, answers = {} }) => {
+    const sections = [
+        ['Business or assistant name', answers.businessName],
+        ['Primary purpose', answers.primaryPurpose],
+        ['Services, products, or topics', answers.offerings],
+        ['Common questions', answers.commonQuestions],
+        ['Customer handoff or contact route', answers.contactRoute],
+        ['Rules and things to avoid', answers.boundaries],
+        ['Extra notes', answers.extraNotes]
+    ].filter(([, value]) => value && String(value).trim());
+
+    const knowledgeBaseText = [
+        `Assistant Role: ${assistantRole || 'General Assistant'}`,
+        `Language Style: ${languageStyle || 'English'}`,
+        `Tone: ${tone || 'Professional'}`,
+        '',
+        ...sections.flatMap(([label, value]) => [`${label}:`, String(value).trim(), ''])
+    ].join('\n').trim();
+
+    const name = answers.businessName || 'there';
+    const purpose = answers.primaryPurpose ? ` I can help with ${answers.primaryPurpose}.` : '';
+
+    return {
+        knowledgeBaseText,
+        welcomeMessage: `Hello! Welcome to ${name}.${purpose} How can I help you today?`.slice(0, 500)
+    };
+};
+
+const generateSetupDraft = async ({ assistantRole, languageStyle, tone, capabilities = [], answers = {} }) => {
+    const prompt = `Create reference data for configuring an AI assistant.
+
+Return only valid JSON with these two string fields:
+{
+  "knowledgeBaseText": "...",
+  "welcomeMessage": "..."
+}
+
+The reference data should be structured, specific, beginner-friendly, and useful as the assistant knowledge base.
+The welcome message must be short, natural, and based on the supplied business/context.
+
+Assistant role: ${assistantRole || 'General Assistant'}
+Language style: ${languageStyle || 'English'}
+Tone: ${tone || 'Professional'}
+Enabled capabilities: ${capabilities.join(', ') || 'answer questions, generate text, help with workflows'}
+Form answers:
+${Object.entries(answers).map(([key, value]) => `- ${key}: ${value || ''}`).join('\n')}`;
+
+    const GROQ_KEYS = getNumberedEnvValues('GROQ_KEY');
+    const GEMINI_KEYS = getNumberedEnvValues('GEMINI_KEY');
+    const systemContext = 'You write clean chatbot setup reference material. Output valid JSON only. Do not include markdown.';
+
+    for (let i = 0; i < GROQ_KEYS.length; i++) {
+        try {
+            console.log(`[Setup Generator] Attempting Groq draft using Key Pool Slot #${i + 1}`);
+            const response = await generateGroqResponse(GROQ_KEYS[i], systemContext, [], prompt);
+            return { ...parseGeneratedSetup(response), source: 'groq' };
+        } catch (error) {
+            console.error(`[Setup Generator] Groq draft failed for Slot #${i + 1}:`, error.message);
+        }
+    }
+
+    for (let i = 0; i < GEMINI_KEYS.length; i++) {
+        try {
+            console.log(`[Setup Generator] Attempting Gemini draft using Key Pool Slot #${i + 1}`);
+            const response = await generateGeminiResponse(GEMINI_KEYS[i], systemContext, [], prompt);
+            return { ...parseGeneratedSetup(response), source: 'gemini' };
+        } catch (error) {
+            console.error(`[Setup Generator] Gemini draft failed for Slot #${i + 1}:`, error.message);
+        }
+    }
+
+    return { ...createFallbackSetupDraft({ assistantRole, languageStyle, tone, answers }), source: 'fallback' };
+};
+
 /**
  * The Smart Rotator Engine
  * Handles routing messages to Free AI providers and catches Rate Limit errors (HTTP 429)
@@ -95,4 +186,4 @@ const getAiResponse = async (botConfig, history, newMessage) => {
     }
 };
 
-module.exports = { getAiResponse, getNumberedEnvValues };
+module.exports = { getAiResponse, getNumberedEnvValues, generateSetupDraft };
