@@ -67,8 +67,9 @@ const pickBotPayload = (body) => {
     return payload;
 };
 
-const validateBotPayload = (payload) => {
+const validateBotPayload = (payload, options = {}) => {
     const errors = [];
+    const { requireKnowledgeBase = false, existingBot = null } = options;
 
     if (Object.prototype.hasOwnProperty.call(payload, 'botName')) {
         if (typeof payload.botName !== 'string' || !payload.botName.trim()) {
@@ -90,8 +91,13 @@ const validateBotPayload = (payload) => {
         errors.push('Primary color must be a valid 6-digit hex color, for example #2563EB.');
     }
 
-    if (Object.prototype.hasOwnProperty.call(payload, 'knowledgeBaseText')) {
-        if (typeof payload.knowledgeBaseText !== 'string' || payload.knowledgeBaseText.trim().length < 20) {
+    const hasKnowledgeBaseText = Object.prototype.hasOwnProperty.call(payload, 'knowledgeBaseText');
+    const knowledgeBaseText = hasKnowledgeBaseText
+        ? payload.knowledgeBaseText
+        : existingBot?.knowledgeBaseText;
+
+    if (hasKnowledgeBaseText || requireKnowledgeBase) {
+        if (typeof knowledgeBaseText !== 'string' || knowledgeBaseText.trim().length < 20) {
             errors.push('Reference data is required and should include at least 20 characters.');
         }
     }
@@ -163,7 +169,7 @@ const sendValidationError = (res, errors) => (
 const createBot = async (req, res) => {
     try {
         const payload = pickBotPayload(req.body);
-        const validationErrors = validateBotPayload(payload);
+        const validationErrors = validateBotPayload(payload, { requireKnowledgeBase: true });
 
         if (validationErrors.length > 0) {
             return sendValidationError(res, validationErrors);
@@ -200,12 +206,6 @@ const getBots = async (req, res) => {
 const updateBot = async (req, res) => {
     try {
         const payload = pickBotPayload(req.body);
-        const validationErrors = validateBotPayload(payload);
-
-        if (validationErrors.length > 0) {
-            return sendValidationError(res, validationErrors);
-        }
-
         const bot = await Bot.findById(req.params.id);
 
         if (!bot) {
@@ -215,6 +215,15 @@ const updateBot = async (req, res) => {
         // Make sure the logged-in user actually owns this bot!
         if (bot.firebaseUid !== req.user.firebaseUid) {
             return res.status(401).json({ message: "User not authorized to edit this bot" });
+        }
+
+        const validationErrors = validateBotPayload(payload, {
+            requireKnowledgeBase: true,
+            existingBot: bot
+        });
+
+        if (validationErrors.length > 0) {
+            return sendValidationError(res, validationErrors);
         }
 
         const updatedBot = await Bot.findByIdAndUpdate(
