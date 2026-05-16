@@ -43,11 +43,18 @@
         }
     };
 
+    const createSafeImage = () => {
+        const image = new Image();
+        image.referrerPolicy = 'no-referrer';
+        image.decoding = 'async';
+        return image;
+    };
+
     // 3. Create the Floating Action Button (FAB)
     const button = document.createElement('button');
     button.type = 'button';
     button.setAttribute('aria-label', 'Open chat');
-    button.innerHTML = `<img src="${defaultLogoUrl}" alt="" referrerpolicy="no-referrer" style="width: 32px; height: 32px; object-fit: contain;">`;
+    button.innerHTML = `<img src="${defaultLogoUrl}" alt="" referrerpolicy="no-referrer" style="width: 32px; height: 32px; border-radius: 50%; object-fit: contain;">`;
     const buttonImage = button.querySelector('img');
     button.style.cssText = `
         position: fixed;
@@ -65,6 +72,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        overflow: hidden;
         transition: transform 0.2s ease;
     `;
 
@@ -145,16 +153,44 @@
     `;
     const loaderImage = loader.querySelector('img');
 
+    let activeImageRequest = 0;
+    const applyWidgetImage = (imageUrl, fit = 'contain') => {
+        [buttonImage, loaderImage].forEach((image) => {
+            if (!image) return;
+            image.onerror = null;
+            image.style.objectFit = fit;
+            image.style.borderRadius = '50%';
+            image.src = imageUrl;
+        });
+    };
+
     const setWidgetImage = (imageUrl) => {
         const nextImageUrl = isValidImageUrl(imageUrl) ? imageUrl : defaultLogoUrl;
+        const requestId = ++activeImageRequest;
 
+        if (nextImageUrl === defaultLogoUrl) {
+            applyWidgetImage(defaultLogoUrl, 'contain');
+            return;
+        }
+
+        const preload = createSafeImage();
+        preload.onload = () => {
+            if (requestId !== activeImageRequest) return;
+            applyWidgetImage(nextImageUrl, 'cover');
+        };
+        preload.onerror = () => {
+            if (requestId !== activeImageRequest) return;
+            applyWidgetImage(defaultLogoUrl, 'contain');
+        };
+        preload.src = nextImageUrl;
+
+        // Keep the current image visible while the profile image is being fetched.
         [buttonImage, loaderImage].forEach((image) => {
             if (!image) return;
             image.onerror = () => {
                 image.onerror = null;
                 image.src = defaultLogoUrl;
             };
-            image.src = nextImageUrl;
         });
     };
     setWidgetImage(configuredAvatarUrl);

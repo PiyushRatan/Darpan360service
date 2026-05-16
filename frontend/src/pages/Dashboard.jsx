@@ -767,7 +767,7 @@ const Dashboard = () => {
                     <input type="text" className="input-field shadow-inner" value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} placeholder="#2563EB" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Avatar / Logo URL</label>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Profile Image / Logo URL</label>
                     <input type="text" className="input-field shadow-inner" value={formData.avatarImgUrl} onChange={e => setFormData({...formData, avatarImgUrl: e.target.value})} placeholder="https://example.com/logo.png" />
                   </div>
                 </div>

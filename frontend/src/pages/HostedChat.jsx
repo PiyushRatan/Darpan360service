@@ -11,6 +11,18 @@ const createSessionId = () => {
   return `sess_${Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')}`;
 };
 
+const getDefaultAvatarUrl = () => `${globalThis.location?.origin || ''}/logo.png`;
+
+const resolveAvatarUrl = (avatarUrl) => {
+  if (!avatarUrl) return getDefaultAvatarUrl();
+
+  try {
+    return new URL(avatarUrl, globalThis.location?.origin || undefined).href;
+  } catch {
+    return getDefaultAvatarUrl();
+  }
+};
+
 const postWidgetConfig = (botId, config) => {
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({
@@ -52,7 +64,7 @@ const HostedChat = () => {
         const nextConfig = {
           name: configData.botName || "AI Assistant",
           color: configData.primaryColor || "#2563EB", 
-          avatar: configData.avatarImgUrl || "",
+          avatar: resolveAvatarUrl(configData.avatarImgUrl),
           welcomeMessage: configData.welcomeMessage || "Hello! I am your AI Assistant. How can I help you today?"
         };
 
@@ -107,7 +119,7 @@ const HostedChat = () => {
           const nextConfig = {
             ...prev,
             name: data.botName,
-            avatar: data.avatarImgUrl,
+            avatar: data.avatarImgUrl ? resolveAvatarUrl(data.avatarImgUrl) : prev?.avatar,
             color: data.primaryColor || prev?.color,
             welcomeMessage: prev?.welcomeMessage
           };
@@ -137,11 +149,17 @@ const HostedChat = () => {
         style={{ backgroundColor: botConfig?.color || '#1E1E1E' }}
       >
         <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 flex items-center justify-center font-bold">
-          {botConfig?.avatar ? (
-            <img src={botConfig.avatar} alt="bot" className="w-full h-full object-cover" />
-          ) : (
-            "BOT"
-          )}
+          <img
+            src={botConfig?.avatar || getDefaultAvatarUrl()}
+            alt={`${botConfig?.name || 'Bot'} profile`}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = getDefaultAvatarUrl();
+              event.currentTarget.className = 'h-7 w-7 object-contain';
+            }}
+          />
         </div>
         <div>
           <h2 className="font-bold text-white text-sm">{botConfig?.name || "Loading..."}</h2>
