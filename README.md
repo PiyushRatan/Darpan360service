@@ -16,6 +16,17 @@ Use the public service pages to explain:
 - what ongoing maintenance includes
 - how developers can copy the open-source version if they want to self-host
 
+## How Darpan360 Bots Work
+
+Darpan360 bots use two core layers:
+
+1. **Behavior Layer**: generated from role, tone, language style, capabilities, and advanced instructions. This controls how the assistant speaks, what kind of assistant it acts like, and what rules it follows.
+2. **Knowledge Layer**: the reference data or knowledge base. This contains services, FAQs, pricing notes, support policies, opening hours, contact methods, restrictions, and boundaries.
+
+When a visitor sends a message, the backend combines Darpan360 platform instructions, generated behavior rules, the business knowledge base, recent conversation history, and the visitor message. The behavior layer controls how the assistant responds. The knowledge layer controls what the assistant responds with.
+
+The Help Me Write flow can generate a clean knowledge base and a starting welcome message from simple business questions. Operators can edit everything before saving.
+
 ## Product Structure
 
 ### Frontend Dashboard

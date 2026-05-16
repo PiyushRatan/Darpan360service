@@ -17,6 +17,7 @@ const creatorCreditUrl = 'https://piyushratan.in/work/darpan360';
 
 const sections = [
   { id: 'overview', label: 'Overview' },
+  { id: 'bot-architecture', label: 'How bots work' },
   { id: 'managed-service', label: 'Managed service' },
   { id: 'client-brief', label: 'Client brief' },
   { id: 'workflow', label: 'Workflow' },
@@ -43,10 +44,25 @@ const workflow = [
 
 const operationRows = [
   ['Bot name', 'Internal label for identifying the client or website.'],
-  ['System prompt', 'The assistant role, tone, rules, and answer boundaries.'],
-  ['Knowledge base', 'The facts the chatbot should use when answering visitor questions.'],
+  ['Behavior layer', 'The assistant role, tone, language style, capabilities, and answer rules.'],
+  ['Knowledge layer', 'The business facts the chatbot should use when answering visitor questions.'],
   ['Allowed domains', 'The approved sites where the public widget is allowed to run.'],
   ['Brand color and avatar', 'Basic client-facing styling for the chat header and widget.']
+];
+
+const responseInputs = [
+  'Darpan360 platform instructions',
+  'generated behavior rules',
+  'business knowledge base',
+  'recent conversation history',
+  'visitor message'
+];
+
+const exampleResults = [
+  'speaks in friendly Hinglish',
+  'explains website packages',
+  'recommends WhatsApp handoff',
+  'avoids promising same-day delivery'
 ];
 
 const InfoCard = ({ icon, title, children }) => (
@@ -124,6 +140,92 @@ const Docs = () => {
               <InfoCard icon={ShieldCheckIcon} title="Controlled public access">
                 Allowed domains reduce misuse and keep each bot tied to approved client websites.
               </InfoCard>
+            </div>
+          </section>
+
+          <section id="bot-architecture" className="space-y-5">
+            <div className="max-w-3xl">
+              <h2 className="text-2xl font-semibold text-white">How Darpan360 bots work</h2>
+              <p className="mt-3 text-sm leading-6 text-gray-400">
+                Each bot is built from two layers: one controls how the assistant behaves, and the other controls
+                what business information it can use while answering.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">01</div>
+                <h3 className="mt-2 text-lg font-semibold text-white">Behavior layer</h3>
+                <p className="mt-3 text-sm leading-6 text-gray-400">
+                  Generated from the selected role, tone, language style, capabilities, and advanced instructions.
+                  This defines how the assistant speaks, what kind of assistant it acts like, and what rules it follows.
+                </p>
+                <p className="mt-3 text-sm leading-6 text-gray-400">
+                  A customer support assistant, for example, may be guided to answer politely, use the knowledge
+                  base first, avoid inventing information, and escalate when unsure.
+                </p>
+              </div>
+
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">02</div>
+                <h3 className="mt-2 text-lg font-semibold text-white">Knowledge layer</h3>
+                <p className="mt-3 text-sm leading-6 text-gray-400">
+                  This is the business information the assistant relies on: services, FAQs, pricing notes, policies,
+                  opening hours, contact methods, restrictions, and boundaries.
+                </p>
+                <p className="mt-3 text-sm leading-6 text-gray-400">
+                  The behavior layer controls how the assistant responds. The knowledge layer controls what it
+                  responds with.
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-builder-border bg-builder-800 p-5">
+              <h3 className="text-sm font-semibold text-white">How responses are generated</h3>
+              <div className="mt-4 grid gap-3 md:grid-cols-5">
+                {responseInputs.map((item) => (
+                  <div key={item} className="border border-builder-border bg-builder-900 px-3 py-3 text-xs leading-5 text-gray-300">
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-sm leading-6 text-gray-400">
+                The backend combines these inputs and sends the final context to the AI model. Visitors never need
+                to understand prompts, model routing, or provider keys.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <h3 className="text-sm font-semibold text-white">Example setup</h3>
+                <div className="mt-4 space-y-2 text-sm leading-6 text-gray-400">
+                  <p>Role: Sales Assistant</p>
+                  <p>Tone: Friendly</p>
+                  <p>Language: Hinglish</p>
+                  <p className="pt-2 text-gray-300">
+                    Knowledge: website design packages start at ₹7,999, contact through WhatsApp, and do not promise
+                    same-day delivery.
+                  </p>
+                </div>
+              </div>
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <h3 className="text-sm font-semibold text-white">Result</h3>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {exampleResults.map((item) => (
+                    <div key={item} className="border border-builder-border bg-builder-900 px-3 py-3 text-sm text-gray-300">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-builder-border bg-builder-800 p-5">
+              <h3 className="text-sm font-semibold text-white">Help Me Write</h3>
+              <p className="mt-3 text-sm leading-6 text-gray-400">
+                The Help Me Write flow asks simple business questions and turns the answers into a clean knowledge
+                base plus a starting welcome message. Users can edit everything before saving.
+              </p>
             </div>
           </section>
 
