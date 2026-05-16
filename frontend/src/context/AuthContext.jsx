@@ -1,15 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { secureFetch } from '../utils/api';
-
-const AuthContext = createContext();
-
-export const useAuth = () => useContext(AuthContext);
+import { AuthContext } from './auth-context';
+import { MainPageLoader, SubPageLoader } from '../components/Loaders';
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [dbUser, setDbUser] = useState(null); // The MongoDB User representation (role, etc.)
+  const [dbUser, setDbUser] = useState(null); // The backend user representation (role, etc.)
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,7 +17,7 @@ export const AuthProvider = ({ children }) => {
       
       if (user) {
         try {
-          // Sync with our MongoDB Backend. If it's a new user, the backend will auto-create the document.
+          // Sync with our backend. If it's a new user, the backend will auto-create the document.
           // This ensures our backend knows their Firebase UID and role.
           const dbResponse = await secureFetch('/auth/sync', { method: 'POST' });
           setDbUser(dbResponse);
@@ -38,7 +36,9 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ currentUser, dbUser, loading }}>
-      {!loading && children}
+      {loading ? (
+        window.location.pathname === '/' ? <MainPageLoader label="Checking session" /> : <SubPageLoader label="Checking session" />
+      ) : children}
     </AuthContext.Provider>
   );
 };

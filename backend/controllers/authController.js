@@ -1,6 +1,6 @@
 const User = require('../models/User');
 
-// @desc    Sync Firebase User to MongoDB
+// @desc    Sync Firebase Auth user to Firestore
 // @route   POST /api/auth/sync
 // @access  Private (Needs Firebase Token)
 const syncUser = async (req, res) => {
@@ -15,9 +15,8 @@ const syncUser = async (req, res) => {
         // Standardize variables (req.user has firebaseUid, req.firebaseUser has uid)
         const uid = authPayload.firebaseUid || authPayload.uid;
         const email = authPayload.email;
-        const name = authPayload.name || '';
 
-        // Check if DB is completely empty before upsert to determine if they get admin
+        // Check if Firestore users are empty before upsert to determine if they get admin
         const isFirstUser = (await User.countDocuments({})) === 0;
 
         // Atomic Upsert: if firebaseUid exists, return it, otherwise insert it.

@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import { ChatPageLoader } from '../components/Loaders';
+import { apiFetch } from '../utils/api';
+
+const createSessionId = () => {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return `sess_${Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')}`;
+};
 
 const HostedChat = () => {
   const { botId } = useParams();
@@ -11,6 +19,7 @@ const HostedChat = () => {
   const [input, setInput] = useState('');
   const [botConfig, setBotConfig] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isBooting, setIsBooting] = useState(true);
   const bottomRef = useRef(null);
   const [sessionId, setSessionId] = useState('');
 
@@ -18,18 +27,15 @@ const HostedChat = () => {
   useEffect(() => {
     // Check if the user already has an active session with this specific bot on this device
     let storedSession = localStorage.getItem(`chat_session_${botId}`);
-    if (!storedSession) {
-      storedSession = 'sess_' + Math.random().toString(36).substring(2, 11);
+    if (!/^sess_[a-f0-9]{32}$/.test(storedSession || '')) {
+      storedSession = createSessionId();
       localStorage.setItem(`chat_session_${botId}`, storedSession);
     }
     setSessionId(storedSession);
 
     const fetchConfigAndHistory = async () => {
       try {
-        const configRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chat/${botId}/config`);
-        const configData = await configRes.json();
-        
-        if (!configRes.ok) throw new Error(configData.error);
+        const configData = await apiFetch(`/chat/${botId}/config`);
 
         setBotConfig({
           name: configData.botName || "AI Assistant",
@@ -38,10 +44,9 @@ const HostedChat = () => {
         });
 
         // Config is valid! Now pull their past messages if any exist
-        const historyRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chat/${botId}/history/${storedSession}`);
-        const historyData = await historyRes.json();
+        const historyData = await apiFetch(`/chat/${botId}/history/${storedSession}`);
 
-        if (historyRes.ok && historyData.messages && historyData.messages.length > 0) {
+        if (historyData.messages && historyData.messages.length > 0) {
             // Restore actual past chat thread
             setMessages(historyData.messages);
         } else {
@@ -52,6 +57,8 @@ const HostedChat = () => {
       } catch (error) {
         console.error("Failed to load bot:", error);
         setMessages([{ role: 'model', content: "Gateway restricted. Bot not found." }]);
+      } finally {
+        setIsBooting(false);
       }
     };
     fetchConfigAndHistory();
@@ -66,21 +73,17 @@ const HostedChat = () => {
     e.preventDefault();
     if (!input.trim() || isTyping) return;
 
-    const userText = input;
+    const userText = input.trim().slice(0, 2000);
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userText }]);
     setIsTyping(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chat/${botId}`, {
+      const data = await apiFetch(`/chat/${botId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userText, clientSessionId: sessionId })
       });
-
-      const data = await response.json();
-      
-      if (!response.ok) throw new Error(data.error);
 
       // If this is the first real message, the backend returns the actual botName/avatar
       if (data.botName) {
@@ -89,11 +92,15 @@ const HostedChat = () => {
 
       setMessages(prev => [...prev, { role: 'model', content: data.response }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'model', content: "⚠️ Gateway Timeout. " + error.message }]);
+      setMessages(prev => [...prev, { role: 'model', content: " Gateway Timeout. " + error.message }]);
     } finally {
       setIsTyping(false);
     }
   };
+
+  if (isBooting) {
+    return <ChatPageLoader label="Opening secure chat" />;
+  }
 
   return (
     <div className="flex flex-col h-screen bg-builder-900 text-gray-200 font-sans">

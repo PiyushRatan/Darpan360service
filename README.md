@@ -1,6 +1,8 @@
 # Darpan360 AI Platform
 
-Darpan360 is a multi-tenant Chatbot-as-a-Service platform. It provides the infrastructure to deploy custom AI agents across third-party websites with specialized domain knowledge bases.
+Darpan360 is an open-source chatbot platform for deploying custom AI assistants across websites. It includes a React dashboard, Firebase Authentication, Firestore persistence, dynamic AI key rotation, and an embeddable widget script.
+
+Repository: https://github.com/PiyushRatan/OnlineChatbotIntegration
 
 ## Architecture
 
@@ -14,7 +16,7 @@ The platform uses a decoupled client-server architecture:
 
 ### 2. Backend API (Node/Express)
 - Located in `/backend`.
-- Connects to MongoDB for data storage.
+- Uses Firebase Admin SDK and Cloud Firestore for data storage.
 - Serves the embeddable `/widget.js` script for third-party integration.
 - Provides REST endpoints to handle interactions and interface with external LLM providers.
 
@@ -43,11 +45,23 @@ The backend implements a fallback mechanism for AI processing to improve reliabi
 
 ### 1. Requirements
 
-Configure your `backend/.env` file with the following variables:
-- MongoDB connection string
-- Google Generative Language API keys
-- Groq API key (optional fallback)
+Copy the example environment files:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+Configure `backend/.env`:
 - Firebase Admin SDK credentials
+- Cloud Firestore project details
+- `GEMINI_KEY_1`, `GEMINI_KEY_2`, etc.
+- Optional `GROQ_KEY_1`, `GROQ_KEY_2`, etc.
+
+Configure `frontend/.env`:
+- `VITE_BACKEND_URL`
+- `VITE_FRONTEND_URL`
+- `VITE_GITHUB_REPO_URL`
 
 ### 2. Running Locally
 
@@ -57,6 +71,8 @@ The application requires both backend and frontend services to be running.
 ```bash
 cd backend
 npm install
+npm run check:firebase
+npm run check:ai-keys
 npm run dev
 ```
 
@@ -68,3 +84,11 @@ npm run dev
 ```
 
 Navigate to `http://localhost:5173/` in your browser to access the dashboard.
+
+## Deployment Notes
+
+- Do not commit Firebase service account JSON files.
+- For production, prefer `FIREBASE_SERVICE_ACCOUNT` as a hosting environment variable.
+- Set backend `FRONTEND_URL` to the production frontend origin.
+- Set frontend `VITE_BACKEND_URL` to the production backend URL before building.
+- Add more AI provider keys with numbered env vars such as `GEMINI_KEY_3` or `GROQ_KEY_2`.

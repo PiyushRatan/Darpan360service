@@ -1,23 +1,54 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { motion } from 'framer-motion';
+import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+
+const getSignInErrorMessage = (error) => {
+  switch (error?.code) {
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'Sign-in was cancelled before it finished.';
+    case 'auth/popup-blocked':
+      return 'The browser blocked the Google sign-in popup. Allow popups for this site and try again.';
+    case 'auth/network-request-failed':
+      return 'Network connection failed. Check your internet connection and try again.';
+    case 'auth/unauthorized-domain':
+      return 'This domain is not authorized in Firebase Authentication. Add the current domain in Firebase Console.';
+    case 'auth/account-exists-with-different-credential':
+      return 'This email already uses a different sign-in method.';
+    default:
+      return 'Google sign-in failed. Please try again.';
+  }
+};
 
 const Login = () => {
+  const navigate = useNavigate();
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  useEffect(() => {
+    if (auth.currentUser) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate]);
 
   const handleGoogleSignIn = async () => {
+    if (isSigningIn) return;
+
     try {
+      setErrorMessage('');
+      setIsSigningIn(true);
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      
-      // Get the JWT token that our backend's Firebase middleware needs
-      const idToken = await result.user.getIdToken();
-      
-      // In production, we would dispatch this to Redux/Context and redirect to /dashboard
-      console.log("Aquired JWT Token for Backend:", idToken);
-      window.location.href = "/dashboard";
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error("Sign-in failed:", error);
+      setErrorMessage(getSignInErrorMessage(error));
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -30,14 +61,32 @@ const Login = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md card relative z-10 p-8"
       >
+        <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition-colors hover:text-white">
+          <ArrowLeftIcon className="h-4 w-4" />
+          Back to home
+        </Link>
+
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white tracking-tight">Access Platform</h2>
-          <p className="text-gray-600 text-sm mt-2">Sign in to deploy and manage AI Bots.</p>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Sign in to Darpan360</h2>
+          <p className="text-gray-500 text-sm mt-2">Use your Google account to access the chatbot dashboard.</p>
         </div>
+
+        {errorMessage && (
+          <div className="mb-5 border border-red-500/30 bg-red-500/10 p-4 text-left">
+            <div className="flex gap-3">
+              <ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+              <div>
+                <div className="text-sm font-semibold text-red-200">Sign-in problem</div>
+                <p className="mt-1 text-sm leading-5 text-red-100/80">{errorMessage}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <button 
           onClick={handleGoogleSignIn}
-          className="w-full bg-white text-gray-900 font-semibold py-3 px-4 rounded shadow-sm hover:bg-gray-100 active:scale-95 transition-all duration-150 flex items-center justify-center gap-3"
+          disabled={isSigningIn}
+          className="w-full bg-white text-gray-900 font-semibold py-3 px-4 rounded shadow-sm hover:bg-gray-100 active:scale-95 transition-all duration-150 flex items-center justify-center gap-3 disabled:cursor-not-allowed disabled:opacity-70 disabled:active:scale-100"
         >
           {/* Default Google G Logo SVG */}
           <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -46,11 +95,11 @@ const Login = () => {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Continue with Google
+          {isSigningIn ? 'Opening Google sign-in...' : 'Continue with Google'}
         </button>
 
-        <div className="mt-8 text-center text-xs text-gray-500 font-mono">
-          Strict Access Enabled. By signing in, you agree to our platform specifications.
+        <div className="mt-8 border-t border-builder-border pt-5 text-xs leading-5 text-gray-500">
+          Access is verified through Firebase Authentication. If sign-in fails on a new domain, add that domain to Firebase Authentication settings before retrying.
         </div>
       </motion.div>
     </div>

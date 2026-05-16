@@ -27,14 +27,11 @@
     const scriptSrc = document.currentScript ? document.currentScript.src : 'https://darpan360ai.web.app/widget.js'; // Fallback
     const domainOrigin = new URL(scriptSrc).origin;
     const iframeUrl = `${domainOrigin}/chat/${botId}`;
+    const logoUrl = `${domainOrigin}/hero.png`;
 
     // 3. Create the Floating Action Button (FAB)
     const button = document.createElement('button');
-    button.innerHTML = `
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 28px; height: 28px;">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
-        </svg>
-    `;
+    button.innerHTML = `<img src="${logoUrl}" alt="Open chat" style="width: 32px; height: 32px; object-fit: contain;">`;
     button.style.cssText = `
         position: fixed;
         bottom: 20px;
@@ -73,6 +70,63 @@
         border: 1px solid #333;
     `;
 
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes darpanWidgetProgress {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(260%); }
+        }
+        @keyframes darpanWidgetPulse {
+            0%, 100% { opacity: 0.48; }
+            50% { opacity: 0.82; }
+        }
+    `;
+
+    const loader = document.createElement('div');
+    loader.style.cssText = `
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        background: #111111;
+        color: #9ca3af;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        z-index: 2;
+    `;
+    loader.innerHTML = `
+        <div style="height: 68px; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #2a2a2a; background: #181818;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #262626; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                <img src="${logoUrl}" alt="" style="width: 25px; height: 25px; object-fit: contain; opacity: .82;">
+            </div>
+            <div style="display: grid; gap: 7px; width: 148px;">
+                <span style="height: 9px; width: 118px; border-radius: 999px; background: #2d2d2d; animation: darpanWidgetPulse 1.4s ease-in-out infinite;"></span>
+                <span style="height: 7px; width: 86px; border-radius: 999px; background: #272727; animation: darpanWidgetPulse 1.4s .18s ease-in-out infinite;"></span>
+            </div>
+        </div>
+        <div style="display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; padding: 18px 16px;">
+            <div style="align-self: flex-start; width: 78%; padding: 12px; border: 1px solid #2a2a2a; background: #1c1c1c; border-radius: 10px 10px 10px 2px;">
+                <span style="display:block;height:8px;width:88%;border-radius:999px;background:#303030;animation:darpanWidgetPulse 1.4s ease-in-out infinite;"></span>
+                <span style="display:block;height:8px;width:62%;margin-top:8px;border-radius:999px;background:#292929;animation:darpanWidgetPulse 1.4s .16s ease-in-out infinite;"></span>
+            </div>
+            <div style="align-self: flex-end; width: 62%; padding: 12px; border: 1px solid #2a2a2a; background: #232323; border-radius: 10px 10px 2px 10px;">
+                <span style="display:block;height:8px;width:82%;border-radius:999px;background:#343434;animation:darpanWidgetPulse 1.4s .26s ease-in-out infinite;"></span>
+            </div>
+            <div style="align-self: flex-start; width: 70%; padding: 12px; border: 1px solid #2a2a2a; background: #1c1c1c; border-radius: 10px 10px 10px 2px;">
+                <span style="display:block;height:8px;width:76%;border-radius:999px;background:#303030;animation:darpanWidgetPulse 1.4s .12s ease-in-out infinite;"></span>
+                <span style="display:block;height:8px;width:48%;margin-top:8px;border-radius:999px;background:#292929;animation:darpanWidgetPulse 1.4s .28s ease-in-out infinite;"></span>
+            </div>
+        </div>
+        <div style="padding: 14px 16px 16px; border-top: 1px solid #2a2a2a; background: #181818;">
+            <div style="height: 40px; border: 1px solid #2a2a2a; border-radius: 999px; background: #101010;"></div>
+            <div style="position: relative; height: 2px; overflow: hidden; margin-top: 12px; border-radius: 999px; background: #242424;">
+                <span style="position:absolute;inset:0 auto 0 0;width:34%;background:#8b949e;animation:darpanWidgetProgress 1.35s ease-in-out infinite;"></span>
+            </div>
+            <div style="margin-top: 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #737373;">
+                Opening chat
+            </div>
+        </div>
+    `;
+
     const iframe = document.createElement('iframe');
     iframe.src = iframeUrl;
     iframe.style.cssText = `
@@ -80,7 +134,14 @@
         height: 100%;
         border: none;
     `;
+    iframe.addEventListener('load', () => {
+        loader.style.opacity = '0';
+        loader.style.transition = 'opacity 220ms ease';
+        setTimeout(() => loader.remove(), 240);
+    });
 
+    document.head.appendChild(style);
+    iframeContainer.appendChild(loader);
     iframeContainer.appendChild(iframe);
     document.body.appendChild(button);
     document.body.appendChild(iframeContainer);

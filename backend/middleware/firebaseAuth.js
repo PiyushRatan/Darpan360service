@@ -12,8 +12,8 @@ const protect = async (req, res, next) => {
             // Verify token using Firebase Admin
             const decodedToken = await admin.auth().verifyIdToken(token);
 
-            // Fetch the user from our MongoDB database using the verified Firebase UID
-            // We do this so we can attach their MongoDB role (e.g., admin) to the request!
+            // Fetch the user from Firestore using the verified Firebase UID
+            // We do this so we can attach their app role (e.g., admin) to the request.
             req.user = await User.findOne({ firebaseUid: decodedToken.uid });
 
             if (!req.user) {

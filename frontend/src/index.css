@@ -4,6 +4,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes loader-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(310%);
+  }
+}
+
 @layer base {
   body {
     @apply bg-builder-900 text-gray-200 antialiased selection:bg-accent-500 selection:text-white;

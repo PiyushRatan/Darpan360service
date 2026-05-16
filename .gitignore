@@ -1,9 +1,16 @@
 node_modules/
 .env
 .env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 scratch.js
 saved_frontend_firebase.js
 testing_widget.html
 .vercel/
+frontend/.firebase/
+backend/serviceAccountKey.json
+backend/*serviceAccount*.json
+backend/*firebase-adminsdk*.json
 
 Don't Push Yours Gitignore too. lol

@@ -1,54 +1,90 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const connectDb = require('./config/dbConnection');
-const Bot = require('./models/Bot');
+const rateLimit = require('express-rate-limit');
 
 // Load env variables
 dotenv.config();
 
-// Connect to MongoDB
-connectDb();
-
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
+
+const chatLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 20,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { error: 'Too many chat requests. Please slow down and try again shortly.' }
+});
+
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { error: 'Too many auth requests. Please try again shortly.' }
+});
+
+const normalizeHostname = (value) => {
+    if (!value || typeof value !== 'string') return '';
+
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) return '';
+
+    try {
+        return new URL(trimmed.includes('://') ? trimmed : `https://${trimmed}`).hostname.replace(/^www\./, '');
+    } catch (error) {
+        return trimmed.split('/')[0].split(':')[0].replace(/^www\./, '');
+    }
+};
+
+const isAllowedHostname = (originHostname, allowedDomain) => {
+    const hostname = normalizeHostname(originHostname);
+    const domain = normalizeHostname(allowedDomain);
+
+    if (!hostname || !domain) return false;
+    return hostname === domain || hostname.endsWith(`.${domain}`);
+};
+
+const configuredOrigins = (process.env.FRONTEND_URL || 'https://darpan360.in')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const isPlatformOrigin = (origin) => {
+    const localhostPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+    return configuredOrigins.includes(origin) || localhostPattern.test(origin);
+};
 
 // Strict Dynamic CORS Policy
 const corsOptionsDelegate = async (req, callback) => {
     let isDomainAllowed = false;
     const origin = req.header('Origin');
     
-    // 1. Allow if no origin (e.g., Postman, curl, server-to-server)
+    // 1. Allow if no origin for non-widget routes (e.g., Postman, curl, server-to-server)
     if (!origin) {
+        if (req.originalUrl.startsWith('/api/chat')) {
+            return callback(new Error('Not allowed by strict CORS policy'));
+        }
         return callback(null, { origin: true });
     }
 
     // 2. Always allow the main frontend platform
-    const mainFrontend = process.env.FRONTEND_URL || 'https://darpan360.in';
-    const localhostPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+/;
-
-    if (origin === mainFrontend || localhostPattern.test(origin)) {
+    if (isPlatformOrigin(origin)) {
         isDomainAllowed = true;
     } else {
         // 3. For chatbot widget routes, check specific Bot's allowedDomains
-        const chatMatch = req.originalUrl.match(/^\/api\/chat\/([a-fA-F0-9]{24})/);
+        const chatMatch = req.originalUrl.match(/^\/api\/chat\/([^/]+)/);
         if (chatMatch) {
             const botId = chatMatch[1];
             try {
+                const Bot = require('./models/Bot');
                 const bot = await Bot.findById(botId, 'allowedDomains');
                 if (bot && bot.allowedDomains && bot.allowedDomains.length > 0) {
-                    try {
-                        const originHostname = new URL(origin).hostname;
-                        isDomainAllowed = bot.allowedDomains.some(domain => {
-                            const cleanDomain = domain.trim().toLowerCase();
-                            return originHostname === cleanDomain || origin.includes(cleanDomain);
-                        });
-                    } catch (e) {
-                         // invalid origin URL fallback
-                         isDomainAllowed = bot.allowedDomains.some(domain => origin.includes(domain.trim()));
-                    }
+                    const originHostname = normalizeHostname(origin);
+                    isDomainAllowed = bot.allowedDomains.some(domain => isAllowedHostname(originHostname, domain));
                 } else if (bot && bot.allowedDomains && bot.allowedDomains.length === 0) {
                     // Empty allowed Domains array implies 'Any Domain' can access this bot
                     isDomainAllowed = true;
@@ -81,9 +117,9 @@ const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Mount API routes
-app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/auth', authLimiter, require('./routes/authRoutes'));
 app.use('/api/bots', require('./routes/botRoutes'));
-app.use('/api/chat', require('./routes/chatRoutes'));
+app.use('/api/chat', chatLimiter, require('./routes/chatRoutes'));
 
 // Initialize background tasks
 const { startCronJobs } = require('./services/cronService');

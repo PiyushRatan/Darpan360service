@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { ArrowRightIcon, CommandLineIcon, BoltIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 const Landing = () => {
@@ -10,8 +11,9 @@ const Landing = () => {
       <header className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-50">
         <h1 className="text-xl font-bold tracking-tight text-white">Darpan360</h1>
         <div className="flex gap-4">
-          <a href="/login" className="text-sm font-medium text-gray-400 hover:text-white transition-colors py-2">Sign In</a>
-          <a href="/dashboard" className="btn-primary text-sm px-5">Go to Dashboard</a>
+          <Link to="/docs" className="text-sm font-medium text-gray-400 hover:text-white transition-colors py-2">Docs</Link>
+          <Link to="/login" className="text-sm font-medium text-gray-400 hover:text-white transition-colors py-2">Sign In</Link>
+          <Link to="/dashboard" className="btn-primary text-sm px-5">Go to Dashboard</Link>
         </div>
       </header>
 
@@ -39,13 +41,13 @@ const Landing = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/dashboard" className="btn-primary text-lg px-8 py-3">
+            <Link to="/dashboard" className="btn-primary text-lg px-8 py-3">
               Deploy Your First Bot
               <ArrowRightIcon className="w-5 h-5 ml-2" />
-            </a>
-            <a href="#features" className="btn-secondary text-lg px-8 py-3">
+            </Link>
+            <Link to="/docs" className="btn-secondary text-lg px-8 py-3">
               Read the Docs
-            </a>
+            </Link>
           </div>
         </motion.div>
       </section>

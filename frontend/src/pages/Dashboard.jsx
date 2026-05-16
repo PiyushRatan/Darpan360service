@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { Link, useNavigate } from 'react-router-dom';
+import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { secureFetch } from '../utils/api';
 import { auth } from '../config/firebase';
+import { SubPageLoader } from '../components/Loaders';
 
 const Dashboard = () => {
   const { currentUser, dbUser } = useAuth();
@@ -31,6 +32,38 @@ const Dashboard = () => {
   // Notification State for Copying
   const [copiedId, setCopiedId] = useState(null);
   const [copiedType, setCopiedType] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const createToastId = () => (
+    globalThis.crypto?.randomUUID?.() || `toast_${Date.now()}_${Math.random().toString(16).slice(2)}`
+  );
+
+  const pushToast = ({ type = 'info', title, message, actionLabel, onAction, duration = 4200 }) => {
+    const id = createToastId();
+    setToasts(prev => [...prev, { id, type, title, message, actionLabel, onAction }]);
+
+    if (duration) {
+      window.setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+      }, duration);
+    }
+
+    return id;
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
+  const getErrorMessage = (error, fallback) => {
+    if (Array.isArray(error?.details) && error.details.length > 0) {
+      return error.details.join(' ');
+    }
+
+    return error?.message || fallback;
+  };
 
   useEffect(() => {
     if (!currentUser) navigate('/login');
@@ -43,6 +76,11 @@ const Dashboard = () => {
       setBots(data);
     } catch (error) {
       console.error("Error fetching bots:", error);
+      pushToast({
+        type: 'error',
+        title: 'Could not load bots',
+        message: getErrorMessage(error, 'Refresh the page or check that the backend is running.')
+      });
     } finally {
       setLoading(false);
     }
@@ -75,7 +113,23 @@ const Dashboard = () => {
   };
 
   const handleSaveBot = async () => {
-    if (!formData.botName) return;
+    if (!formData.botName.trim()) {
+      pushToast({
+        type: 'error',
+        title: 'Bot name required',
+        message: 'Give this chatbot an internal name before saving.'
+      });
+      return;
+    }
+
+    if (!/^#[0-9a-fA-F]{6}$/.test(formData.primaryColor)) {
+      pushToast({
+        type: 'error',
+        title: 'Invalid brand color',
+        message: 'Use a 6-digit hex color like #2563EB.'
+      });
+      return;
+    }
 
     // Convert comma-separated string to an array of domains, trimming whitespace
     const parsedDomains = formData.allowedDomains
@@ -83,58 +137,198 @@ const Dashboard = () => {
       .map(d => d.trim())
       .filter(d => d.length > 0);
 
+    if (parsedDomains.length > 20) {
+      pushToast({
+        type: 'error',
+        title: 'Too many domains',
+        message: 'Add no more than 20 allowed domains for one chatbot.'
+      });
+      return;
+    }
+
+    if (parsedDomains.some(domain => domain.length > 253)) {
+      pushToast({
+        type: 'error',
+        title: 'Invalid domain',
+        message: 'Each allowed domain must be under 253 characters.'
+      });
+      return;
+    }
+
+    if (formData.avatarImgUrl.trim()) {
+      try {
+        new URL(formData.avatarImgUrl.trim());
+      } catch (error) {
+        pushToast({
+          type: 'error',
+          title: 'Invalid avatar URL',
+          message: 'Use a full URL like https://example.com/logo.png.'
+        });
+        return;
+      }
+    }
+
     const payload = {
-        botName: formData.botName,
+        botName: formData.botName.trim(),
         allowedDomains: parsedDomains,
         systemContext: formData.systemContext,
         knowledgeBaseText: formData.knowledgeBaseText,
         primaryColor: formData.primaryColor,
-        avatarImgUrl: formData.avatarImgUrl
+        avatarImgUrl: formData.avatarImgUrl.trim()
     };
 
     try {
+      setSaving(true);
       if (modalMode === 'create') {
         await secureFetch('/bots', {
           method: 'POST',
           body: JSON.stringify(payload)
+        });
+        pushToast({
+          type: 'success',
+          title: 'Bot created',
+          message: 'Your chatbot is ready to configure and embed.'
         });
       } else if (modalMode === 'edit') {
         await secureFetch(`/bots/${formData.id}`, {
           method: 'PUT',
           body: JSON.stringify(payload)
         });
+        pushToast({
+          type: 'success',
+          title: 'Changes saved',
+          message: 'The chatbot configuration was updated.'
+        });
       }
       setIsModalOpen(false);
       fetchBots();
     } catch (error) {
       console.error("Error saving bot:", error);
+      pushToast({
+        type: 'error',
+        title: modalMode === 'create' ? 'Bot was not created' : 'Changes were not saved',
+        message: getErrorMessage(error, 'Check the chatbot fields and try again.')
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDeleteBot = async (id) => {
-    if(!window.confirm("Are you sure you want to completely erase this AI Bot?")) return;
+    pushToast({
+      type: 'warning',
+      title: 'Delete this bot?',
+      message: 'This removes the bot configuration immediately.',
+      actionLabel: 'Delete',
+      duration: 9000,
+      onAction: async () => {
+        try {
+          setDeletingId(id);
+          await secureFetch(`/bots/${id}`, { method: 'DELETE' });
+          await fetchBots();
+          pushToast({
+            type: 'success',
+            title: 'Bot deleted',
+            message: 'The chatbot was removed.'
+          });
+        } catch (error) {
+          console.error("Error deleting bot:", error);
+          pushToast({
+            type: 'error',
+            title: 'Bot was not deleted',
+            message: getErrorMessage(error, 'Try again in a moment.')
+          });
+        } finally {
+          setDeletingId(null);
+        }
+      }
+    });
+  };
+
+  const handleCopy = async (text, botId, type) => {
     try {
-      await secureFetch(`/bots/${id}`, { method: 'DELETE' });
-      fetchBots();
+      await navigator.clipboard.writeText(text);
+      setCopiedId(botId);
+      setCopiedType(type);
+      pushToast({
+        type: 'success',
+        title: type === 'embed' ? 'Embed copied' : 'Link copied',
+        message: type === 'embed' ? 'Paste this script into your website.' : 'Share this hosted chat link.'
+      });
+      setTimeout(() => {
+        setCopiedId(null);
+        setCopiedType(null);
+      }, 2000);
     } catch (error) {
-      console.error("Error deleting bot:", error);
+      console.error("Copy Error:", error);
+      pushToast({
+        type: 'error',
+        title: 'Could not copy',
+        message: 'Your browser blocked clipboard access.'
+      });
     }
   };
 
-  const handleCopy = (text, botId, type) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(botId);
-    setCopiedType(type);
-    setTimeout(() => {
-      setCopiedId(null);
-      setCopiedType(null);
-    }, 2000);
-  };
-
-  if (!currentUser || loading) return <div className="min-h-screen bg-builder-900 flex items-center justify-center text-white">Loading dashboard...</div>;
+  if (!currentUser || loading) return <SubPageLoader label="Loading dashboard" />;
 
   return (
     <div className="min-h-screen bg-builder-900 flex text-gray-200">
+      <div className="fixed right-4 top-4 z-[70] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-3">
+        <AnimatePresence>
+          {toasts.map((toast) => {
+            const Icon = toast.type === 'success'
+              ? CheckCircleIcon
+              : toast.type === 'error'
+                ? ExclamationTriangleIcon
+                : InformationCircleIcon;
+            const color = toast.type === 'success'
+              ? 'text-emerald-400'
+              : toast.type === 'error'
+                ? 'text-red-400'
+                : toast.type === 'warning'
+                  ? 'text-amber-400'
+                  : 'text-accent-500';
+
+            return (
+              <motion.div
+                key={toast.id}
+                initial={{ opacity: 0, y: -12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 24, scale: 0.98 }}
+                className="border border-builder-border bg-builder-800 p-4 shadow-xl"
+              >
+                <div className="flex gap-3">
+                  <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${color}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-white">{toast.title}</div>
+                    {toast.message && <div className="mt-1 text-sm leading-5 text-gray-400">{toast.message}</div>}
+                    {toast.actionLabel && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          removeToast(toast.id);
+                          await toast.onAction?.();
+                        }}
+                        className="mt-3 rounded border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:border-red-400 hover:text-red-200"
+                      >
+                        {toast.actionLabel}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeToast(toast.id)}
+                    className="text-gray-500 transition-colors hover:text-white"
+                    aria-label="Dismiss notification"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
       
       {/* Sidebar Navigation */}
       <div className="w-64 border-r border-builder-border p-4 hidden md:flex flex-col">
@@ -143,10 +337,14 @@ const Dashboard = () => {
         </h1>
         
         <nav className="flex-1 space-y-1">
-          <a href="#" className="flex items-center gap-3 px-3 py-2 bg-builder-800 text-white rounded font-medium">
+          <button type="button" className="flex w-full items-center gap-3 rounded bg-builder-800 px-3 py-2 text-left font-medium text-white">
             <ChartBarIcon className="w-5 h-5 text-accent-500" />
             Overview
-          </a>
+          </button>
+          <Link to="/docs" className="flex items-center gap-3 rounded px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-builder-800 hover:text-white">
+            <BookOpenIcon className="h-5 w-5 text-gray-500" />
+            Docs
+          </Link>
         </nav>
 
         {/* User Google Avatar Profile */}
@@ -196,7 +394,8 @@ const Dashboard = () => {
             >
               <button 
                 onClick={() => handleDeleteBot(bot._id)}
-                className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition-colors"
+                disabled={deletingId === bot._id}
+                className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 title="Delete Bot"
               >
                 <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -329,8 +528,8 @@ const Dashboard = () => {
 
               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-builder-border">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
-                <button onClick={handleSaveBot} className="btn-primary">
-                  {modalMode === 'create' ? 'Create' : 'Save Changes'}
+                <button onClick={handleSaveBot} disabled={saving} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
+                  {saving ? 'Saving...' : modalMode === 'create' ? 'Create' : 'Save Changes'}
                 </button>
               </div>
             </motion.div>

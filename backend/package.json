@@ -4,6 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "check:ai-keys": "node scripts/checkAiKeys.js",
+    "check:firebase": "node scripts/checkFirebaseAdmin.js",
+    "dev": "node server.js",
+    "firestore:reset": "node scripts/resetFirestore.js",
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,7 +23,6 @@
     "express-rate-limit": "^8.3.2",
     "firebase-admin": "^13.8.0",
     "groq-sdk": "^1.1.2",
-    "mongoose": "^9.4.1",
     "node-cron": "^4.2.1"
   }
 }
