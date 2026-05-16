@@ -14,6 +14,14 @@ const FIELD_LIMITS = {
 };
 
 const MAX_ALLOWED_DOMAINS = 2;
+const REQUIRED_GENERATOR_ANSWERS = [
+    ['businessName', 'Business or assistant name'],
+    ['primaryPurpose', 'What should this assistant help with'],
+    ['offerings', 'Services, products, or topics'],
+    ['commonQuestions', 'Common questions people ask'],
+    ['contactRoute', 'Human handoff route'],
+    ['boundaries', 'Things it should avoid saying']
+];
 
 const normalizeDomain = (value) => {
     if (typeof value !== 'string') return '';
@@ -142,9 +150,12 @@ const validateBotPayload = (payload, options = {}) => {
 const validateGeneratorPayload = (body) => {
     const errors = [];
     const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
+    const missingAnswers = REQUIRED_GENERATOR_ANSWERS
+        .filter(([key]) => !String(answers[key] || '').trim())
+        .map(([, label]) => label);
 
-    if (Object.values(answers).every((value) => !String(value || '').trim())) {
-        errors.push('Add at least one answer before generating reference data.');
+    if (missingAnswers.length > 0) {
+        errors.push(`Complete every generator question before generating reference data. Missing: ${missingAnswers.join(', ')}.`);
     }
 
     Object.entries(answers).forEach(([key, value]) => {

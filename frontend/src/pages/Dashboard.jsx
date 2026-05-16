@@ -63,6 +63,10 @@ const isValidDomainInput = (domain) => (
   || /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)
 );
 
+const getMissingGeneratorFields = (answers) => (
+  BASE_GENERATOR_FIELDS.filter((field) => !String(answers[field.id] || '').trim())
+);
+
 const Dashboard = () => {
   const { currentUser, dbUser } = useAuth();
   const navigate = useNavigate();
@@ -287,16 +291,34 @@ const Dashboard = () => {
       businessName: prev.businessName || formData.botName
     }));
     setIsGeneratorOpen(true);
+    pushToast({
+      type: 'info',
+      title: 'Reference writer opened',
+      message: 'Answer every question so the draft can be specific and useful.'
+    });
+  };
+
+  const closeReferenceGenerator = (reason = 'closed') => {
+    setIsGeneratorOpen(false);
+    pushToast({
+      type: 'info',
+      title: reason === 'cancelled' ? 'Reference writing cancelled' : 'Reference writer closed',
+      message: reason === 'cancelled'
+        ? 'No reference data was changed.'
+        : 'You can reopen Help me write anytime.'
+    });
   };
 
   const handleGenerateReference = async () => {
-    const hasAnyAnswer = Object.values(generatorAnswers).some(value => String(value || '').trim());
+    const missingFields = getMissingGeneratorFields(generatorAnswers);
 
-    if (!hasAnyAnswer) {
+    if (missingFields.length > 0) {
+      const missingLabels = missingFields.map((field) => field.label);
       pushToast({
         type: 'error',
-        title: 'Add a little context',
-        message: 'Answer at least one question before generating reference data.'
+        title: 'Complete every question',
+        message: `Missing: ${missingLabels.slice(0, 3).join(', ')}${missingLabels.length > 3 ? ` and ${missingLabels.length - 3} more` : ''}.`,
+        duration: 7000
       });
       return;
     }
@@ -305,7 +327,7 @@ const Dashboard = () => {
       setGeneratingReference(true);
       pushToast({
         type: 'info',
-        title: 'Generating reference data',
+        title: 'Writing reference data',
         message: 'Preparing a clean knowledge base and opening message.'
       });
 
@@ -330,7 +352,7 @@ const Dashboard = () => {
       setIsGeneratorOpen(false);
       pushToast({
         type: 'success',
-        title: 'Reference data generated',
+        title: 'Reference data written',
         message: data.message || 'The draft was added to this bot.'
       });
     } catch (error) {
@@ -390,7 +412,7 @@ const Dashboard = () => {
       pushToast({
         type: 'error',
         title: 'Reference data required',
-        message: 'Add business facts, FAQs, services, or use Help me generate before saving.'
+        message: 'Add business facts, FAQs, services, or use Help me write before saving.'
       });
       return;
     }
@@ -876,7 +898,7 @@ const Dashboard = () => {
                     </div>
                     <button type="button" onClick={openReferenceGenerator} className="btn-secondary w-full text-sm sm:w-auto">
                       <SparklesIcon className="mr-2 h-4 w-4" />
-                      Help me generate
+                      Help me write
                     </button>
                   </div>
                   <textarea
@@ -945,12 +967,12 @@ const Dashboard = () => {
               <div className="shrink-0 border-b border-builder-border px-4 py-4 sm:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">Generate Reference Data</h3>
+                  <h3 className="text-lg font-semibold text-white">Help Me Write Reference Data</h3>
                   <p className="mt-1 text-sm leading-6 text-gray-400">
-                    Answer a few simple questions. The AI will turn them into clean reference data and an opening message.
+                    Answer every question. The AI will turn the full intake into clean reference data and an opening message.
                   </p>
                 </div>
-                <button type="button" onClick={() => setIsGeneratorOpen(false)} className="text-gray-500 hover:text-white" aria-label="Close generator">
+                <button type="button" onClick={() => closeReferenceGenerator()} className="text-gray-500 hover:text-white" aria-label="Close generator">
                   <XMarkIcon className="h-5 w-5" />
                 </button>
               </div>
@@ -966,12 +988,15 @@ const Dashboard = () => {
               <div className="mt-5 grid gap-4">
                 {BASE_GENERATOR_FIELDS.map((field) => (
                   <label key={field.id} className="block">
-                    <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">{field.label}</span>
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      {field.label} <span className="text-red-300">*</span>
+                    </span>
                     <textarea
                       className="input-field mt-1 min-h-[64px] shadow-inner"
                       value={generatorAnswers[field.id] || ''}
                       onChange={e => setGeneratorAnswers(prev => ({ ...prev, [field.id]: e.target.value }))}
                       placeholder={field.placeholder}
+                      required
                     />
                   </label>
                 ))}
@@ -980,12 +1005,12 @@ const Dashboard = () => {
 
               <div className="shrink-0 border-t border-builder-border bg-builder-800 px-4 py-3 sm:px-6">
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-                <button type="button" onClick={() => setIsGeneratorOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">
+                <button type="button" onClick={() => closeReferenceGenerator('cancelled')} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">
                   Cancel
                 </button>
                 <button type="button" onClick={handleGenerateReference} disabled={generatingReference} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
                   <SparklesIcon className="mr-2 h-4 w-4" />
-                  {generatingReference ? 'Generating...' : 'Generate Draft'}
+                  {generatingReference ? 'Writing...' : 'Write Draft'}
                 </button>
               </div>
               </div>

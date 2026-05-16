@@ -12,6 +12,24 @@ export const ASSISTANT_ROLES = [
     prompt: 'Act as an organized personal assistant. Help users plan, understand next steps, and make information easier to act on.'
   },
   {
+    id: 'persona-assistant',
+    label: 'Persona Assistant',
+    description: 'Adopts a configured persona or brand voice.',
+    prompt: 'Act in the approved persona or brand voice described in the reference data. Match the supplied style, vocabulary, and perspective while staying honest about limits and avoiding unsupported claims.'
+  },
+  {
+    id: 'information-assistant',
+    label: 'Information Assistant',
+    description: 'Gives clear information and answers general queries.',
+    prompt: 'Act as an information assistant. Answer general queries clearly, organize facts, summarize useful details, and rely on the provided reference data as the source of truth.'
+  },
+  {
+    id: 'faq-assistant',
+    label: 'FAQ Assistant',
+    description: 'Handles common questions from visitors.',
+    prompt: 'Act as a FAQ assistant. Answer repeated questions directly, keep responses short and useful, and guide users to a human handoff when the reference data does not contain the answer.'
+  },
+  {
     id: 'customer-support',
     label: 'Customer Support',
     description: 'Answers customer questions and explains policies.',
@@ -85,6 +103,9 @@ export const LANGUAGE_STYLES = [
 export const ROLE_TONES = {
   'general-assistant': ['Professional', 'Friendly', 'Calm', 'Direct'],
   'personal-assistant': ['Friendly', 'Calm', 'Supportive', 'Minimal'],
+  'persona-assistant': ['Friendly', 'Professional', 'Expressive', 'Calm'],
+  'information-assistant': ['Professional', 'Direct', 'Calm', 'Minimal'],
+  'faq-assistant': ['Friendly', 'Direct', 'Calm', 'Professional'],
   'customer-support': ['Friendly', 'Calm', 'Professional'],
   'sales-assistant': ['Persuasive', 'Friendly', 'Professional'],
   'business-helper': ['Professional', 'Direct', 'Calm'],
@@ -115,6 +136,9 @@ export const BASE_GENERATOR_FIELDS = [
 ];
 
 export const ROLE_GENERATOR_HINTS = {
+  'persona-assistant': 'Add persona traits, preferred wording, point of view, phrases to use, phrases to avoid, and strict boundaries.',
+  'information-assistant': 'Add the key facts, topics covered, source material, common information gaps, and handoff route.',
+  'faq-assistant': 'Add the most common questions, exact answers, policy notes, service details, and escalation rules.',
   'customer-support': 'Add refund rules, support hours, escalation steps, and policy details.',
   'sales-assistant': 'Add pricing, best-fit customers, objections, proof points, and buying next steps.',
   'coding-assistant': 'Add tech stack, supported languages, repository rules, and explanation style.',
