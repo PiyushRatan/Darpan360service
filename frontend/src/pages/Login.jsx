@@ -4,6 +4,7 @@ import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { motion } from 'framer-motion';
 import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { SEO } from '../utils/seo';
 
 const getSignInErrorMessage = (error) => {
   switch (error?.code) {
@@ -54,6 +55,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-builder-900 flex items-center justify-center p-4">
+      <SEO
+        title="Darpan360 Operator Sign In"
+        description="Sign in to manage Darpan360 client chatbot deployments, configuration, domains, and website installation."
+      />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#333_1px,transparent_1px),linear-gradient(to_bottom,#333_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-10 pointer-events-none"></div>
       
       <motion.div 
@@ -67,8 +72,8 @@ const Login = () => {
         </Link>
 
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white tracking-tight">Sign in to Darpan360</h2>
-          <p className="text-gray-500 text-sm mt-2">Use your Google account to access the chatbot dashboard.</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Operator sign in</h1>
+          <p className="text-gray-500 text-sm mt-2">Use your Google account to manage client chatbot deployments.</p>
         </div>
 
         {errorMessage && (

@@ -142,9 +142,9 @@ const HostedChat = () => {
               {msg.role === 'user' ? (
                 msg.content
               ) : (
-                <text className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-builder-900 prose-pre:border prose-pre:border-builder-border">
+                <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-builder-900 prose-pre:border prose-pre:border-builder-border">
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </text>
+                </div>
               )}
             </div>
           </motion.div>
@@ -162,7 +162,7 @@ const HostedChat = () => {
         <div ref={bottomRef} />
       </div>
 
-      {/* The Billboard Engine & Input Box */}
+      {/* Chat input */}
       <div className="p-3 bg-builder-800 border-t border-builder-border">
         <form onSubmit={handleSend} className="relative">
           <input 
@@ -183,10 +183,10 @@ const HostedChat = () => {
             </svg>
           </button>
         </form>
-        {/* Viral Billboard Trap! */}
+        {/* Attribution */}
         <div className="text-center mt-2 pb-1">
           <a href="/" target="_blank" className="text-[10px] uppercase font-bold tracking-widest text-gray-500 hover:text-accent-500 transition-colors">
-            ⚡ Powered By Darpan360
+            Powered by Darpan360
           </a>
         </div>
       </div>
@@ -196,3 +196,4 @@ const HostedChat = () => {
 };
 
 export default HostedChat;
+

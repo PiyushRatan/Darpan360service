@@ -4,42 +4,54 @@ import {
   ArrowLeftIcon,
   ArrowTopRightOnSquareIcon,
   CodeBracketIcon,
-  CommandLineIcon,
+  DocumentTextIcon,
   GlobeAltIcon,
-  KeyIcon,
   ServerStackIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
+import { SEO } from '../utils/seo';
 
-const githubRepoUrl = import.meta.env.VITE_GITHUB_REPO_URL || 'https://github.com/PiyushRatan/OnlineChatbotIntegration';
+const githubRepoUrl = import.meta.env.VITE_GITHUB_REPO_URL || 'https://github.com/PiyushRatan/Darpan360service';
 
 const sections = [
   { id: 'overview', label: 'Overview' },
-  { id: 'github', label: 'GitHub' },
-  { id: 'setup', label: 'Setup' },
-  { id: 'env', label: 'Environment' },
-  { id: 'run', label: 'Run locally' },
-  { id: 'deploy', label: 'Deploy' },
-  { id: 'use', label: 'Use the app' }
+  { id: 'managed-service', label: 'Managed service' },
+  { id: 'client-brief', label: 'Client brief' },
+  { id: 'workflow', label: 'Workflow' },
+  { id: 'installation', label: 'Installation' },
+  { id: 'operations', label: 'Operations' },
+  { id: 'open-source', label: 'Open source' }
 ];
 
-const envRows = [
-  ['frontend/.env', 'VITE_BACKEND_URL', 'Backend API URL used by the React dashboard.'],
-  ['frontend/.env', 'VITE_FRONTEND_URL', 'Frontend URL used when generating hosted chat and widget links.'],
-  ['frontend/.env', 'VITE_GITHUB_REPO_URL', 'Public GitHub URL shown in the docs page.'],
-  ['backend/.env', 'FRONTEND_URL', 'Comma-separated frontend origins allowed by backend CORS.'],
-  ['backend/.env', 'FIREBASE_PROJECT_ID', 'Firebase project ID used by the Admin SDK.'],
-  ['backend/.env', 'FIREBASE_CLIENT_EMAIL', 'Firebase service account email.'],
-  ['backend/.env', 'FIREBASE_SERVICE_ACCOUNT_PATH', 'Local path to a service account JSON file ignored by git.'],
-  ['backend/.env', 'FIREBASE_SERVICE_ACCOUNT', 'Production-friendly full service account JSON env var.'],
-  ['backend/.env', 'GEMINI_KEY_1, GEMINI_KEY_2...', 'Numbered Gemini keys loaded automatically by the backend.'],
-  ['backend/.env', 'GROQ_KEY_1, GROQ_KEY_2...', 'Optional numbered Groq fallback keys.']
+const clientBrief = [
+  ['Business profile', 'Company name, services, locations, working hours, and preferred contact routes.'],
+  ['Customer questions', 'FAQs, objections, common requests, pricing questions, and support topics.'],
+  ['Rules and boundaries', 'What the assistant can answer, what it must avoid, and when to send a visitor to a human.'],
+  ['Knowledge material', 'Website copy, service pages, policies, product notes, menus, brochures, and internal answer sheets.'],
+  ['Brand settings', 'Primary color, bot name, avatar or logo, and the websites where the bot can appear.']
+];
+
+const workflow = [
+  ['01', 'Review the business', 'Understand the client services, visitor intent, and the questions the chatbot should handle.'],
+  ['02', 'Build the assistant brief', 'Convert client material into clear instructions, knowledge content, and escalation rules.'],
+  ['03', 'Configure the bot', 'Create the bot in the dashboard, set the brand color, add allowed domains, and paste the knowledge base.'],
+  ['04', 'Test before launch', 'Ask realistic questions, test wrong-domain access, check mobile behavior, and confirm the handoff path.'],
+  ['05', 'Install and maintain', 'Add the hosted link or widget script, then update content as the client business changes.']
+];
+
+const operationRows = [
+  ['Bot name', 'Internal label for identifying the client or website.'],
+  ['System prompt', 'The assistant role, tone, rules, and answer boundaries.'],
+  ['Knowledge base', 'The facts the chatbot should use when answering visitor questions.'],
+  ['Allowed domains', 'The approved sites where the public widget is allowed to run.'],
+  ['Brand color and avatar', 'Basic client-facing styling for the chat header and widget.']
 ];
 
 const InfoCard = ({ icon: Icon, title, children }) => (
-  <div className="rounded border border-builder-border bg-builder-800 p-5">
+  <div className="border border-builder-border bg-builder-800 p-5">
     <div className="flex items-start gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-builder-border bg-builder-900 text-accent-500">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
         <Icon className="h-5 w-5" />
       </div>
       <div>
@@ -51,37 +63,26 @@ const InfoCard = ({ icon: Icon, title, children }) => (
 );
 
 const CodeBlock = ({ children }) => (
-  <pre className="overflow-x-auto rounded border border-builder-border bg-builder-950 p-4 text-xs leading-6 text-gray-300">
+  <pre className="overflow-x-auto border border-builder-border bg-builder-950 p-4 text-xs leading-6 text-gray-300">
     <code>{children}</code>
   </pre>
-);
-
-const Step = ({ number, title, children }) => (
-  <div className="border-l border-builder-border pl-5">
-    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">Step {number}</div>
-    <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
-    <div className="mt-2 text-sm leading-6 text-gray-400">{children}</div>
-  </div>
 );
 
 const Docs = () => {
   return (
     <div className="min-h-screen bg-builder-900 text-gray-200">
+      <SEO
+        title="Darpan360 Service Guide | Managed AI Chatbot Deployment"
+        description="A practical service guide for configuring, installing, and maintaining Darpan360 AI chatbots for business websites."
+      />
+
       <header className="border-b border-builder-border bg-builder-900/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link to="/" className="flex items-center gap-3 text-sm font-semibold text-white">
             <ArrowLeftIcon className="h-4 w-4 text-gray-500" />
-            Darpan360 Developer Docs
+            Darpan360 Service Guide
           </Link>
-          <a
-            href={githubRepoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-accent-500 hover:text-accent-600"
-          >
-            GitHub
-            <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-          </a>
+          <Link to="/dashboard" className="btn-primary px-4 py-2 text-sm">Open Dashboard</Link>
         </div>
       </header>
 
@@ -92,7 +93,7 @@ const Docs = () => {
               <a
                 key={section.id}
                 href={`#${section.id}`}
-                className="block rounded px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-builder-900 hover:text-white"
+                className="block px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-builder-900 hover:text-white"
               >
                 {section.label}
               </a>
@@ -104,134 +105,133 @@ const Docs = () => {
           <section id="overview" className="border border-builder-border bg-builder-800 p-6 md:p-8">
             <div className="max-w-3xl">
               <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
-                Deployable chatbot platform
+                Set up client chatbots without exposing the technical stack.
               </h1>
               <p className="mt-5 text-base leading-7 text-gray-400">
-                Darpan360 is an open-source chatbot platform with a React dashboard, Firebase Authentication, Firestore storage, dynamic AI key rotation, and an embeddable website widget. This guide is for developers who want to copy, run, and deploy the project.
+                Darpan360 is operated as a managed setup workflow. You collect the client business knowledge,
+                configure the assistant, install it on the website, and keep it updated. The client receives a
+                working chatbot, not a list of deployment chores.
               </p>
             </div>
-
             <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <InfoCard icon={ShieldCheckIcon} title="Authentication">
-                Firebase Authentication verifies dashboard users before bot management routes are allowed.
+              <InfoCard icon={DocumentTextIcon} title="Client content in">
+                Business knowledge, policies, service details, and FAQs become a structured assistant brief.
               </InfoCard>
-              <InfoCard icon={ServerStackIcon} title="Storage">
-                Firebase Admin SDK writes users, bots, and chat sessions into Cloud Firestore.
+              <InfoCard icon={ServerStackIcon} title="Managed setup out">
+                You configure the dashboard, install the website widget, and test behavior before handoff.
               </InfoCard>
-              <InfoCard icon={KeyIcon} title="AI key rotation">
-                Numbered environment keys are loaded automatically and tried in order when a provider fails.
+              <InfoCard icon={ShieldCheckIcon} title="Controlled public access">
+                Allowed domains reduce misuse and keep each bot tied to approved client websites.
               </InfoCard>
             </div>
           </section>
 
-          <section id="github" className="space-y-5">
-            <h2 className="text-2xl font-semibold text-white">Repository</h2>
-            <div className="rounded border border-builder-border bg-builder-800 p-5">
-              <p className="text-sm leading-6 text-gray-400">
-                The public repository can be cloned, customized, and deployed by any developer.
-              </p>
-              <a
-                href={githubRepoUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent-500 hover:text-accent-600"
-              >
-                {githubRepoUrl}
-                <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-              </a>
+          <section id="managed-service" className="space-y-5">
+            <h2 className="text-2xl font-semibold text-white">How to position the service</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <h3 className="text-sm font-semibold text-white">What you sell</h3>
+                <ul className="mt-4 space-y-3 text-sm leading-6 text-gray-400">
+                  <li>Chatbot setup for the client website</li>
+                  <li>Business-specific knowledge configuration</li>
+                  <li>Website widget or hosted chat installation</li>
+                  <li>Testing and refinement before launch</li>
+                  <li>Ongoing updates when client information changes</li>
+                </ul>
+              </div>
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <h3 className="text-sm font-semibold text-white">What you do not need to hand over</h3>
+                <ul className="mt-4 space-y-3 text-sm leading-6 text-gray-400">
+                  <li>Provider API keys</li>
+                  <li>Firebase Admin setup</li>
+                  <li>Backend hosting details</li>
+                  <li>Prompt engineering process</li>
+                  <li>Deployment and maintenance responsibility</li>
+                </ul>
+              </div>
             </div>
           </section>
 
-          <section id="setup" className="space-y-5">
-            <h2 className="text-2xl font-semibold text-white">Setup checklist</h2>
-            <div className="grid gap-6 md:grid-cols-2">
-              <Step number="1" title="Clone and install">
-                Clone the repository, then install dependencies in both backend and frontend folders.
-              </Step>
-              <Step number="2" title="Create Firebase project">
-                Enable Firebase Authentication, create a service account key, and enable Cloud Firestore.
-              </Step>
-              <Step number="3" title="Add AI provider keys">
-                Add at least one Gemini key. Add Groq keys only if you want a fallback provider.
-              </Step>
-              <Step number="4" title="Run checks">
-                Use the backend check scripts before starting development or deploying.
-              </Step>
-            </div>
-          </section>
-
-          <section id="env" className="space-y-5">
-            <h2 className="text-2xl font-semibold text-white">Environment variables</h2>
-            <div className="rounded border border-builder-border bg-builder-800 p-5">
-              <CodeBlock>{`cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env`}</CodeBlock>
-            </div>
+          <section id="client-brief" className="space-y-5">
+            <h2 className="text-2xl font-semibold text-white">Client brief checklist</h2>
             <div className="overflow-hidden border border-builder-border bg-builder-800">
-              {envRows.map(([file, name, description]) => (
-                <div key={`${file}-${name}`} className="grid gap-2 border-b border-builder-border px-5 py-4 last:border-b-0 lg:grid-cols-[150px_240px_1fr]">
-                  <span className="text-xs font-semibold text-gray-500">{file}</span>
-                  <code className="text-xs font-semibold text-accent-500">{name}</code>
+              {clientBrief.map(([name, description]) => (
+                <div key={name} className="grid gap-2 border-b border-builder-border px-5 py-4 last:border-b-0 md:grid-cols-[220px_1fr]">
+                  <div className="text-sm font-semibold text-white">{name}</div>
                   <p className="text-sm leading-6 text-gray-400">{description}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          <section id="run" className="space-y-5">
-            <h2 className="text-2xl font-semibold text-white">Run locally</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded border border-builder-border bg-builder-800 p-5">
-                <h3 className="text-sm font-semibold text-white">Backend</h3>
-                <CodeBlock>{`cd backend
-npm install
-npm run check:firebase
-npm run check:ai-keys
-npm run dev`}</CodeBlock>
-              </div>
-              <div className="rounded border border-builder-border bg-builder-800 p-5">
-                <h3 className="text-sm font-semibold text-white">Frontend</h3>
-                <CodeBlock>{`cd frontend
-npm install
-npm run dev`}</CodeBlock>
-              </div>
+          <section id="workflow" className="space-y-5">
+            <h2 className="text-2xl font-semibold text-white">Delivery workflow</h2>
+            <div className="grid gap-5 md:grid-cols-2">
+              {workflow.map(([number, title, text]) => (
+                <div key={title} className="border-l border-builder-border pl-5">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">{number}</div>
+                  <h3 className="mt-2 text-lg font-semibold text-white">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-gray-400">{text}</p>
+                </div>
+              ))}
             </div>
           </section>
 
-          <section id="deploy" className="space-y-5">
-            <h2 className="text-2xl font-semibold text-white">Deployment notes</h2>
-            <div className="grid gap-4">
-              <InfoCard icon={CommandLineIcon} title="Backend hosting">
-                Deploy the backend as a Node server or serverless function. In production, prefer FIREBASE_SERVICE_ACCOUNT instead of deploying a JSON key file.
-              </InfoCard>
-              <InfoCard icon={GlobeAltIcon} title="Frontend hosting">
-                Deploy the Vite frontend to Firebase Hosting, Vercel, or another static host. Set VITE_BACKEND_URL to the production backend URL before building.
-              </InfoCard>
-              <InfoCard icon={ShieldCheckIcon} title="CORS">
-                Set FRONTEND_URL in the backend environment to every frontend origin that should call the API.
-              </InfoCard>
-            </div>
-          </section>
-
-          <section id="use" className="space-y-5">
-            <h2 className="text-2xl font-semibold text-white">Using the app</h2>
+          <section id="installation" className="space-y-5">
+            <h2 className="text-2xl font-semibold text-white">Website installation options</h2>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded border border-builder-border bg-builder-800 p-5">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+              <InfoCard icon={GlobeAltIcon} title="Hosted chat link">
+                Use this for navigation links, buttons, QR codes, email signatures, or campaign pages that should
+                open a full chat view.
+              </InfoCard>
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
                   <CodeBracketIcon className="h-5 w-5 text-accent-500" />
-                  Widget embed
-                </h3>
+                  Floating website widget
+                </div>
                 <CodeBlock>{`<script
-  src="https://your-frontend-domain.com/widget.js"
-  data-bot-id="BOT_ID">
+  src="https://your-domain.com/widget.js"
+  data-bot-id="CLIENT_BOT_ID">
 </script>`}</CodeBlock>
               </div>
-              <div className="rounded border border-builder-border bg-builder-800 p-5">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-                  <GlobeAltIcon className="h-5 w-5 text-accent-500" />
-                  Hosted chat
-                </h3>
-                <CodeBlock>{`https://your-frontend-domain.com/chat/BOT_ID`}</CodeBlock>
+            </div>
+          </section>
+
+          <section id="operations" className="space-y-5">
+            <h2 className="text-2xl font-semibold text-white">Dashboard operations</h2>
+            <div className="overflow-hidden border border-builder-border bg-builder-800">
+              {operationRows.map(([name, description]) => (
+                <div key={name} className="grid gap-2 border-b border-builder-border px-5 py-4 last:border-b-0 md:grid-cols-[220px_1fr]">
+                  <div className="text-sm font-semibold text-white">{name}</div>
+                  <p className="text-sm leading-6 text-gray-400">{description}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="open-source" className="space-y-5">
+            <h2 className="text-2xl font-semibold text-white">Open-source path</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="border border-builder-border bg-builder-800 p-5">
+                <h3 className="text-sm font-semibold text-white">For developers</h3>
+                <p className="mt-3 text-sm leading-6 text-gray-400">
+                  The public repository can be copied and self-hosted by technical users who want to manage
+                  deployment, Firebase, provider keys, and maintenance themselves.
+                </p>
+                <a
+                  href={githubRepoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent-500 hover:text-accent-600"
+                >
+                  View GitHub repository
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                </a>
               </div>
+              <InfoCard icon={WrenchScrewdriverIcon} title="For service clients">
+                Keep the managed offer focused on implementation, installation, and updates. The client should not
+                need to operate the developer setup.
+              </InfoCard>
             </div>
           </section>
         </div>

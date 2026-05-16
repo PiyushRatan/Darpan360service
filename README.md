@@ -1,49 +1,52 @@
-# Darpan360 AI Platform
+# Darpan360 Service
 
-Darpan360 is an open-source chatbot platform for deploying custom AI assistants across websites. It includes a React dashboard, Firebase Authentication, Firestore persistence, dynamic AI key rotation, and an embeddable widget script.
+Darpan360 is a managed AI chatbot service platform for configuring, installing, and maintaining business-specific chatbots on client websites. It includes an operator dashboard, Firebase Authentication, Firestore persistence, dynamic AI key rotation, hosted chat pages, and an embeddable website widget.
 
-Repository: https://github.com/PiyushRatan/OnlineChatbotIntegration
+Repository: https://github.com/PiyushRatan/Darpan360service
 
-## Architecture
+## Service Positioning
 
-The platform uses a decoupled client-server architecture:
+This version is structured for service providers who want to sell chatbot setup and maintenance as a client service. The client provides business details, FAQs, policies, service information, and approved website domains. The operator handles configuration, launch testing, website installation, and future updates.
 
-### 1. Frontend Dashboard (React/Vite)
+Use the public service pages to explain:
+
+- what the chatbot service does
+- what information clients need to provide
+- how installation is handled
+- what ongoing maintenance includes
+- how developers can copy the open-source version if they want to self-host
+
+## Product Structure
+
+### Frontend Dashboard
+
 - Located in `/frontend`.
-- Built with React and styled with TailwindCSS.
-- Enables users to configure and manage bots, including brand colors, avatars, allowed domains, system prompts, and knowledge bases.
-- Uses Firebase for user authentication.
+- Built with React, Vite, and Tailwind CSS.
+- Includes service landing pages, operator sign-in, dashboard management, hosted chat views, and documentation pages.
+- Uses Firebase client authentication.
 
-### 2. Backend API (Node/Express)
+### Backend API
+
 - Located in `/backend`.
-- Uses Firebase Admin SDK and Cloud Firestore for data storage.
-- Serves the embeddable `/widget.js` script for third-party integration.
-- Provides REST endpoints to handle interactions and interface with external LLM providers.
+- Uses Firebase Admin SDK and Cloud Firestore.
+- Serves the embeddable `/widget.js` script for client websites.
+- Provides REST endpoints for auth sync, bot management, chat sessions, and AI responses.
 
-## AI Service Implementation
+## AI Reliability
 
-The backend implements a fallback mechanism for AI processing to improve reliability.
+The backend supports provider failover and key rotation:
 
-1. **Primary Provider (Gemini)**: 
-   Incoming chatter, conversation history, and the configured knowledge base are routed primarily to the Google Gemini API (gemini-2.5-flash-lite).
-   
-2. **Key Rotation & Cascading**:
-   If the primary API key encounters rate limits, the service fails over to a secondary API key.
-
-3. **Fallback Provider (Groq)**:
-   In the event of an upstream provider outage, the system routes requests to Groq (llama3-8b-8192) as a secondary inference provider.
+1. Gemini keys can be added as `GEMINI_KEY_1`, `GEMINI_KEY_2`, `GEMINI_KEY_3`, and so on.
+2. If a key reaches a provider limit or fails, the service tries the next available key.
+3. Optional Groq keys can be added as `GROQ_KEY_1`, `GROQ_KEY_2`, and so on for fallback responses.
 
 ## Session Management
 
-1. **Client Persistence**
-   User sessions are maintained via `localStorage` within the chat widget. Returning users are identified by a session key, ensuring that prior chat context is re-fetched and displayed across page reloads.
+Widget users are identified with a browser session key so returning visitors can keep conversation context across page reloads. The backend also includes cleanup logic for removing stale chat sessions.
 
-2. **Automated Cleanup**
-   The application implements a cron job in `/backend/services/cronService.js`. To manage database size, it automatically removes chat sessions that have been inactive for more than 4 hours.
+## Developer Setup
 
-## Development Setup
-
-### 1. Requirements
+These setup notes are for developers who want to run or copy the open-source project. Service clients do not need to operate this stack.
 
 Copy the example environment files:
 
@@ -52,22 +55,16 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Configure `backend/.env`:
-- Firebase Admin SDK credentials
-- Cloud Firestore project details
-- `GEMINI_KEY_1`, `GEMINI_KEY_2`, etc.
-- Optional `GROQ_KEY_1`, `GROQ_KEY_2`, etc.
+Configure `backend/.env` with Firebase Admin credentials, Firestore project values, AI provider keys, and frontend/backend origins.
 
-Configure `frontend/.env`:
+Configure `frontend/.env` with:
+
 - `VITE_BACKEND_URL`
 - `VITE_FRONTEND_URL`
 - `VITE_GITHUB_REPO_URL`
 
-### 2. Running Locally
+Run the backend:
 
-The application requires both backend and frontend services to be running.
-
-**Backend Service:**
 ```bash
 cd backend
 npm install
@@ -76,19 +73,20 @@ npm run check:ai-keys
 npm run dev
 ```
 
-**Frontend Service:**
+Run the frontend:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Navigate to `http://localhost:5173/` in your browser to access the dashboard.
+Open `http://localhost:5173/` to use the service dashboard locally.
 
 ## Deployment Notes
 
-- Do not commit Firebase service account JSON files.
-- For production, prefer `FIREBASE_SERVICE_ACCOUNT` as a hosting environment variable.
+- Do not commit `.env` files or Firebase service account JSON files.
+- For production hosting, prefer `FIREBASE_SERVICE_ACCOUNT` as an environment variable.
 - Set backend `FRONTEND_URL` to the production frontend origin.
 - Set frontend `VITE_BACKEND_URL` to the production backend URL before building.
-- Add more AI provider keys with numbered env vars such as `GEMINI_KEY_3` or `GROQ_KEY_2`.
+- Add more AI provider keys with numbered env vars when scaling usage.

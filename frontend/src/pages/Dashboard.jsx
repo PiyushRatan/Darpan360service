@@ -343,7 +343,7 @@ const Dashboard = () => {
           </button>
           <Link to="/docs" className="flex items-center gap-3 rounded px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-builder-800 hover:text-white">
             <BookOpenIcon className="h-5 w-5 text-gray-500" />
-            Docs
+            Service Guide
           </Link>
         </nav>
 
