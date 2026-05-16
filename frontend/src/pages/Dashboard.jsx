@@ -689,9 +689,9 @@ const Dashboard = () => {
 
                 <div className="space-y-3 mt-4 text-sm">
                   <div className="flex justify-between items-center pb-2 border-b border-builder-border/50 truncate">
-                    <span className="text-gray-400 shrink-0 mr-4">Allowed Domains</span>
+                    <span className="text-gray-400 shrink-0 mr-4">Client Domains</span>
                     <span className="text-gray-200 font-medium truncate">
-                      {(bot.allowedDomains || []).length > 0 ? bot.allowedDomains.join(', ') : 'Darpan360 only'}
+                      {(bot.allowedDomains || []).length > 0 ? bot.allowedDomains.join(', ') : 'No client domain - Darpan360 only'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-builder-border/50 truncate">
@@ -879,7 +879,9 @@ const Dashboard = () => {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {formData.allowedDomains.length === 0 ? (
-                      <span className="border border-dashed border-builder-border px-3 py-2 text-xs text-gray-500">Darpan360 only</span>
+                      <span className="border border-dashed border-builder-border px-3 py-2 text-xs text-gray-500">
+                        No client domain added - Darpan360 only
+                      </span>
                     ) : formData.allowedDomains.map((domain) => (
                       <span key={domain} className="inline-flex items-center gap-2 border border-builder-border bg-builder-900 px-3 py-2 text-xs font-semibold text-gray-200">
                         {domain}
