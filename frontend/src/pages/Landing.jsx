@@ -297,7 +297,7 @@ const Landing = () => {
             {isSignedIn ? (
               <LandingProfileMenu currentUser={currentUser} dbUser={dbUser} />
             ) : (
-              <Link to="/login" className="btn-primary px-5 text-sm">Operator Sign In</Link>
+              <Link to="/login" className="btn-primary px-5 text-sm">Sign In</Link>
             )}
           </nav>
         </div>
@@ -333,7 +333,7 @@ const Landing = () => {
                 <ArrowRightIcon className="ml-2 h-5 w-5" />
               </Link>
               <Link to={isSignedIn ? '/dashboard' : '/login'} className="btn-secondary px-6 py-3 text-base">
-                {isSignedIn ? 'Open Dashboard' : 'Operator Sign In'}
+                {isSignedIn ? 'Open Dashboard' : 'Sign In'}
               </Link>
             </div>
           </motion.div>
@@ -404,7 +404,7 @@ const Landing = () => {
                 Open-source path
               </Link>
               <Link to={isSignedIn ? '/dashboard' : '/login'} className="btn-primary px-5 py-3">
-                {isSignedIn ? 'Configure a client bot' : 'Operator Sign In'}
+                {isSignedIn ? 'Configure a client bot' : 'Sign In'}
               </Link>
             </div>
           </Reveal>
@@ -427,7 +427,7 @@ const Landing = () => {
           <div className="flex gap-4">
             <Link to="/docs" className="hover:text-white">Service Guide</Link>
             <Link to={isSignedIn ? '/dashboard' : '/login'} className="hover:text-white">
-              {isSignedIn ? 'Dashboard' : 'Operator Sign In'}
+              {isSignedIn ? 'Dashboard' : 'Sign In'}
             </Link>
           </div>
         </div>

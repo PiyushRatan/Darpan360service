@@ -56,7 +56,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-builder-900 flex items-center justify-center p-4">
       <SEO
-        title="Darpan360 Operator Sign In"
+        title="Darpan360 Sign In"
         description="Sign in to manage Darpan360 client chatbot deployments, configuration, domains, and website installation."
       />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#333_1px,transparent_1px),linear-gradient(to_bottom,#333_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-10 pointer-events-none"></div>
@@ -72,7 +72,7 @@ const Login = () => {
         </Link>
 
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Operator sign in</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Sign in</h1>
           <p className="text-gray-500 text-sm mt-2">Use your Google account to manage client chatbot deployments.</p>
         </div>
 
