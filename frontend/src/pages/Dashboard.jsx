@@ -650,14 +650,57 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-12">
-        <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-12">
+        <div className="mb-6 border border-builder-border bg-builder-800 p-3 md:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="min-w-0 text-left text-lg font-bold tracking-tight text-white"
+            >
+              Darpan360
+            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                to="/docs"
+                className="inline-flex h-10 items-center gap-2 border border-builder-border px-3 text-sm font-semibold text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
+              >
+                <BookOpenIcon className="h-4 w-4 text-gray-500" />
+                Guide
+              </Link>
+              <button
+                type="button"
+                onClick={() => auth.signOut()}
+                className="inline-flex h-10 w-10 items-center justify-center border border-builder-border text-gray-400 transition-colors hover:border-gray-600 hover:text-white"
+                aria-label="Sign out"
+              >
+                <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-builder-border pt-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <img src={currentUser.photoURL || 'https://via.placeholder.com/150'} alt="Profile" className="h-8 w-8 shrink-0 rounded-full border border-builder-border" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-white">{currentUser.displayName || 'User'}</div>
+                {dbUser?.role === 'admin' && <div className="text-[10px] font-bold uppercase tracking-widest text-accent-500">Admin</div>}
+              </div>
+            </div>
+            <div className="inline-flex shrink-0 items-center gap-2 border border-accent-500/30 bg-accent-500/10 px-3 py-2 text-xs font-semibold text-accent-100">
+              <ChartBarIcon className="h-4 w-4" />
+              Dashboard
+            </div>
+          </div>
+        </div>
+
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between md:mb-10">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Active Bots</h2>
             <p className="text-gray-400 text-sm mt-1">Manage and track your deployed AI gateways.</p>
           </div>
           
-          <button onClick={() => openModal('create')} className="btn-primary">
+          <button onClick={() => openModal('create')} className="btn-primary w-full sm:w-auto">
             <PlusIcon className="w-5 h-5 mr-2 -ml-1" />
             New Bot
           </button>
@@ -713,23 +756,23 @@ const Dashboard = () => {
               </div>
 
               {/* Bot Action Footer */}
-              <div className="mt-8 pt-4 border-t border-builder-border flex items-center justify-between">
+              <div className="mt-8 flex flex-col gap-3 border-t border-builder-border pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <button 
                   onClick={() => openModal('edit', bot)}
-                  className="text-gray-400 hover:text-white flex items-center gap-2 text-sm font-medium transition-colors"
+                  className="flex items-center justify-center gap-2 text-sm font-medium text-gray-400 transition-colors hover:text-white sm:justify-start"
                 >
                   <Cog8ToothIcon className="w-4 h-4" /> Config
                 </button>
-                <div className="flex gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-4">
                   <button 
-                    className="text-accent-500 hover:text-accent-600 flex items-center gap-2 text-sm font-bold transition-colors"
+                    className="flex items-center justify-center gap-2 text-sm font-bold text-accent-500 transition-colors hover:text-accent-600"
                     onClick={() => handleCopy(createHostedChatUrl(bot._id), bot._id, 'link')}
                   >
                     <CodeBracketIcon className="w-4 h-4" /> 
                     {copiedId === bot._id && copiedType === 'link' ? "Copied Link!" : "Web Link"}
                   </button>
                   <button 
-                    className="text-accent-500 hover:text-accent-600 flex items-center gap-2 text-sm font-bold transition-colors"
+                    className="flex items-center justify-center gap-2 text-sm font-bold text-accent-500 transition-colors hover:text-accent-600"
                     onClick={() => handleCopy(createEmbedScript(bot), bot._id, 'embed')}
                   >
                     <CodeBracketIcon className="w-4 h-4" /> 
@@ -745,20 +788,23 @@ const Dashboard = () => {
       {/* Dynamic Create/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/60 p-2 backdrop-blur-sm sm:p-4">
+          <div className="fixed inset-0 z-50 flex items-stretch justify-center overflow-hidden bg-black/60 p-0 backdrop-blur-sm sm:items-start sm:overflow-y-auto sm:p-4">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="my-2 flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded border border-builder-border bg-builder-800 shadow-2xl sm:my-4 sm:max-h-[calc(100dvh-2rem)]"
+              className="flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden border border-builder-border bg-builder-800 shadow-2xl sm:my-4 sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded"
             >
               <div className="shrink-0 border-b border-builder-border px-4 py-4 sm:px-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="text-xl font-bold text-white">
+                    <div className="mb-2 inline-flex border border-accent-500/30 bg-accent-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-accent-100">
+                      Guided setup
+                    </div>
+                    <h3 className="text-lg font-bold text-white sm:text-xl">
                       {modalMode === 'create' ? 'Create New Bot' : 'Configure Bot'}
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-400">Configure this like an AI employee. The technical prompt is built in the background.</p>
+                    <p className="mt-1 text-sm leading-6 text-gray-400">Complete the required setup once, then test the hosted chat before sharing it.</p>
                   </div>
                   <button type="button" onClick={() => setIsModalOpen(false)} className="shrink-0 text-gray-500 transition-colors hover:text-white" aria-label="Close bot setup">
                     <XMarkIcon className="h-5 w-5" />
@@ -766,33 +812,55 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-              <div className="space-y-5 sm:space-y-6">
+              <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5">
+              <div className="space-y-4 sm:space-y-5">
+                <div className="grid gap-2 text-xs font-semibold text-gray-400 sm:grid-cols-4">
+                  {['Identity', 'Behavior', 'Access', 'Knowledge'].map((item, index) => (
+                    <div key={item} className="flex items-center gap-2 border border-builder-border bg-builder-900/70 px-3 py-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-builder-border text-[10px] text-accent-500">{index + 1}</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+
                 {/* Core Settings */}
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)]">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Assistant Name</label>
-                    <input type="text" className="input-field shadow-inner" value={formData.botName} onChange={e => setFormData({...formData, botName: e.target.value})} placeholder="e.g. Dolphin 360 Assistant" />
+                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">Identity</h4>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">Name the assistant and set the client-facing brand details.</p>
+                    </div>
+                    <span className="shrink-0 border border-red-300/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Brand Color</label>
-                    <input type="text" className="input-field shadow-inner" value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} placeholder="#2563EB" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Profile Image / Logo URL</label>
-                    <input type="text" className="input-field shadow-inner" value={formData.avatarImgUrl} onChange={e => setFormData({...formData, avatarImgUrl: e.target.value})} placeholder="https://example.com/logo.png" />
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_minmax(0,1fr)]">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Assistant Name</label>
+                      <input type="text" className="input-field shadow-inner" value={formData.botName} onChange={e => setFormData({...formData, botName: e.target.value})} placeholder="e.g. Dolphin 360 Assistant" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Brand Color</label>
+                      <input type="text" className="input-field shadow-inner" value={formData.primaryColor} onChange={e => setFormData({...formData, primaryColor: e.target.value})} placeholder="#2563EB" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Profile Image / Logo URL</label>
+                      <input type="text" className="input-field shadow-inner" value={formData.avatarImgUrl} onChange={e => setFormData({...formData, avatarImgUrl: e.target.value})} placeholder="https://example.com/logo.png" />
+                    </div>
                   </div>
                 </div>
 
-                <div className="border border-builder-border bg-builder-900/50 p-4">
+                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h4 className="text-sm font-semibold text-white">Assistant Role</h4>
-                      <p className="mt-1 text-xs text-gray-500">Choose the job this AI should perform.</p>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-white">Behavior</h4>
+                        <span className="border border-red-300/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">Choose the job, speaking style, and practical abilities for this assistant.</p>
                     </div>
                     <div className="text-xs font-semibold text-accent-500 sm:text-right">{getRoleById(formData.assistantRole).label}</div>
                   </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-400">Assistant Role</div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {ASSISTANT_ROLES.map((role) => {
                       const selected = formData.assistantRole === role.id;
                       return (
@@ -800,19 +868,19 @@ const Dashboard = () => {
                           key={role.id}
                           type="button"
                           onClick={() => updateAssistantRole(role.id)}
-                          className={`border p-3 text-left transition-colors ${selected ? 'border-accent-500 bg-accent-500/10 text-white' : 'border-builder-border bg-builder-800 text-gray-300 hover:border-gray-600 hover:text-white'}`}
+                          className={`border p-2.5 text-left transition-colors sm:p-3 ${selected ? 'border-accent-500 bg-accent-500/10 text-white' : 'border-builder-border bg-builder-800 text-gray-300 hover:border-gray-600 hover:text-white'}`}
                         >
                           <div className="text-sm font-semibold">{role.label}</div>
-                          <div className="mt-1 text-xs leading-5 text-gray-500">{role.description}</div>
+                          <div className="mt-1 text-[11px] leading-4 text-gray-500 sm:text-xs sm:leading-5">{role.description}</div>
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 border border-builder-border bg-builder-900/40 p-3 md:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Language Style</label>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Language Style</label>
                     <select
                       className="input-field shadow-inner"
                       value={formData.languageStyle}
@@ -824,7 +892,7 @@ const Dashboard = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Tone</label>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Tone</label>
                     <div className="flex flex-wrap gap-2">
                       {getToneOptions(formData.assistantRole).map((tone) => (
                         <button
@@ -840,8 +908,9 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="border border-builder-border bg-builder-900/50 p-4">
+                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
                   <h4 className="text-sm font-semibold text-white">Capabilities</h4>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">Keep enabled items practical; these become behavioral guardrails for the bot.</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {CAPABILITY_OPTIONS.map((capability) => (
                       <label key={capability.id} className="flex items-center gap-2 border border-builder-border bg-builder-800 px-3 py-2 text-sm text-gray-300">
@@ -862,13 +931,13 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div>
+                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Allowed Website Domains</label>
-                      <p className="text-xs text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} client domains. Darpan360 stays allowed by default.</p>
+                      <h4 className="text-sm font-semibold text-white">Website Access</h4>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} client domains. Darpan360 stays allowed by default.</p>
                     </div>
-                    <span className="text-xs font-semibold text-gray-500">{formData.allowedDomains.length}/{MAX_ALLOWED_DOMAINS}</span>
+                    <span className="shrink-0 text-xs font-semibold text-gray-500">{formData.allowedDomains.length}/{MAX_ALLOWED_DOMAINS}</span>
                   </div>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <input
@@ -902,13 +971,14 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div>
+                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
-                        Reference Data <span className="text-red-300">*</span>
-                      </label>
-                      <p className="text-xs text-gray-500">Facts, FAQs, services, rules, and handoff details the assistant should know.</p>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-white">Reference Data</h4>
+                        <span className="border border-red-300/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">Facts, FAQs, services, rules, and handoff details the assistant should know.</p>
                     </div>
                     <button type="button" onClick={openReferenceGenerator} className="btn-secondary w-full text-sm sm:w-auto">
                       <SparklesIcon className="mr-2 h-4 w-4" />
@@ -916,24 +986,30 @@ const Dashboard = () => {
                     </button>
                   </div>
                   <textarea
-                    className="input-field mt-3 min-h-[170px] shadow-inner border-accent-500/30"
+                    className="input-field mt-3 min-h-[150px] border-accent-500/30 shadow-inner sm:min-h-[170px]"
                     value={formData.knowledgeBaseText}
                     onChange={e => setFormData({...formData, knowledgeBaseText: e.target.value})}
                     placeholder="Paste client services, FAQs, pricing notes, policies, working hours, and handoff instructions..."
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Opening Message</label>
+                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Opening Message</label>
+                      <p className="text-xs leading-5 text-gray-500">Leave blank to auto-generate from the reference data.</p>
+                    </div>
+                    <span className="shrink-0 border border-builder-border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Editable</span>
+                  </div>
                   <textarea
-                    className="input-field min-h-[74px] shadow-inner"
+                    className="input-field mt-3 min-h-[74px] shadow-inner"
                     value={formData.welcomeMessage}
                     onChange={e => setFormData({...formData, welcomeMessage: e.target.value})}
                     placeholder={buildOpeningMessage(formData)}
                   />
                 </div>
 
-                <div className="border-t border-builder-border pt-4">
+                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
                   <button
                     type="button"
                     onClick={() => setShowAdvanced(prev => !prev)}
@@ -941,9 +1017,10 @@ const Dashboard = () => {
                   >
                     {showAdvanced ? 'Hide advanced customization' : 'Show advanced customization'}
                   </button>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">Optional edge-case rules stay tucked away until needed.</p>
                   {showAdvanced && (
                     <div className="mt-3">
-                      <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Additional Instructions</label>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Additional Instructions</label>
                       <textarea
                         className="input-field min-h-[90px] shadow-inner"
                         value={formData.advancedInstructions}
@@ -958,8 +1035,8 @@ const Dashboard = () => {
 
               <div className="shrink-0 border-t border-builder-border bg-builder-800 px-4 py-3 sm:px-6">
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">Cancel</button>
-                <button onClick={handleSaveBot} disabled={saving} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
+                <button onClick={() => setIsModalOpen(false)} className="w-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white sm:w-auto">Cancel</button>
+                <button onClick={handleSaveBot} disabled={saving} className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
                   {saving ? 'Saving...' : modalMode === 'create' ? 'Create' : 'Save Changes'}
                 </button>
                 </div>
