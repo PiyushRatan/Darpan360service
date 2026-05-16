@@ -691,7 +691,7 @@ const Dashboard = () => {
                   <div className="flex justify-between items-center pb-2 border-b border-builder-border/50 truncate">
                     <span className="text-gray-400 shrink-0 mr-4">Allowed Domains</span>
                     <span className="text-gray-200 font-medium truncate">
-                      {(bot.allowedDomains || []).length > 0 ? bot.allowedDomains.join(', ') : 'Any Domain'}
+                      {(bot.allowedDomains || []).length > 0 ? bot.allowedDomains.join(', ') : 'Darpan360 only'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-builder-border/50 truncate">
@@ -857,7 +857,7 @@ const Dashboard = () => {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Allowed Website Domains</label>
-                      <p className="text-xs text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} domains. Leave empty only when the bot can run anywhere.</p>
+                      <p className="text-xs text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} client domains. Darpan360 stays allowed by default.</p>
                     </div>
                     <span className="text-xs font-semibold text-gray-500">{formData.allowedDomains.length}/{MAX_ALLOWED_DOMAINS}</span>
                   </div>
@@ -879,7 +879,7 @@ const Dashboard = () => {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {formData.allowedDomains.length === 0 ? (
-                      <span className="border border-dashed border-builder-border px-3 py-2 text-xs text-gray-500">Any domain allowed</span>
+                      <span className="border border-dashed border-builder-border px-3 py-2 text-xs text-gray-500">Darpan360 only</span>
                     ) : formData.allowedDomains.map((domain) => (
                       <span key={domain} className="inline-flex items-center gap-2 border border-builder-border bg-builder-900 px-3 py-2 text-xs font-semibold text-gray-200">
                         {domain}

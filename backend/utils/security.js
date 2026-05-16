@@ -1,6 +1,11 @@
 const BOT_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 const LOCALHOST_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
 const DOMAIN_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+const DEFAULT_PLATFORM_ORIGINS = [
+    'https://darpan360.in',
+    'https://darpan360ai.web.app',
+    'https://darpan360ai.firebaseapp.com'
+];
 
 const normalizeHostname = (value) => {
     if (!value || typeof value !== 'string') return '';
@@ -60,18 +65,31 @@ const isAllowedHostname = (originHostname, allowedDomain) => {
 };
 
 const getConfiguredOrigins = () => (
-    (process.env.FRONTEND_URL || 'https://darpan360.in')
-        .split(',')
+    [
+        ...DEFAULT_PLATFORM_ORIGINS,
+        ...(process.env.FRONTEND_URL || '')
+            .split(',')
+    ]
         .map(normalizeOrigin)
-        .filter(Boolean)
+        .filter((origin) => (
+            origin
+            && (
+                process.env.NODE_ENV !== 'production'
+                || !LOCALHOST_ORIGIN_PATTERN.test(origin)
+            )
+        ))
 );
 
 const isPlatformOrigin = (origin) => {
     const normalizedOrigin = normalizeOrigin(origin);
     if (!normalizedOrigin) return false;
 
-    return getConfiguredOrigins().includes(normalizedOrigin)
-        || LOCALHOST_ORIGIN_PATTERN.test(normalizedOrigin);
+    if (getConfiguredOrigins().includes(normalizedOrigin)) {
+        return true;
+    }
+
+    return process.env.NODE_ENV !== 'production'
+        && LOCALHOST_ORIGIN_PATTERN.test(normalizedOrigin);
 };
 
 const getRequestSourceOrigin = (req) => {
@@ -94,11 +112,6 @@ const getAllowedDomains = (bot) => (
 
 const validateBotSource = (bot, sourceOrigin) => {
     const allowedDomains = getAllowedDomains(bot);
-
-    if (allowedDomains.length === 0) {
-        return { allowed: true };
-    }
-
     const normalizedSourceOrigin = normalizeOrigin(sourceOrigin);
     const sourceHostname = normalizeHostname(normalizedSourceOrigin);
 
@@ -111,6 +124,13 @@ const validateBotSource = (bot, sourceOrigin) => {
 
     if (isPlatformOrigin(normalizedSourceOrigin)) {
         return { allowed: true };
+    }
+
+    if (allowedDomains.length === 0) {
+        return {
+            allowed: false,
+            error: 'This chatbot is only approved on Darpan360 until a website domain is added in bot settings.'
+        };
     }
 
     const allowed = allowedDomains.some((domain) => isAllowedHostname(sourceHostname, domain));

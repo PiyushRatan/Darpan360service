@@ -75,9 +75,6 @@ const corsOptionsDelegate = async (req, callback) => {
                 if (bot && bot.allowedDomains && bot.allowedDomains.length > 0) {
                     const originHostname = normalizeHostname(origin);
                     isDomainAllowed = bot.allowedDomains.some(domain => isAllowedHostname(originHostname, domain));
-                } else if (bot && bot.allowedDomains && bot.allowedDomains.length === 0) {
-                    // Empty allowed Domains array implies 'Any Domain' can access this bot
-                    isDomainAllowed = true;
                 }
             } catch (error) {
                 console.error("CORS Bot DB check error:", error);
