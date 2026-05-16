@@ -616,8 +616,8 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8 md:p-12 overflow-y-auto">
-        <header className="flex justify-between items-center mb-10">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-12">
+        <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Active Bots</h2>
             <p className="text-gray-400 text-sm mt-1">Manage and track your deployed AI gateways.</p>
@@ -632,7 +632,7 @@ const Dashboard = () => {
         {/* Dense Grid Layout */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {bots.length === 0 ? (
-            <div className="col-span-2 text-center py-16 text-gray-500 border border-dashed border-builder-border rounded card">
+            <div className="text-center py-16 text-gray-500 border border-dashed border-builder-border rounded card xl:col-span-2">
               No bots available. Create your first bot to begin.
             </div>
           ) : bots.map((bot, i) => (
@@ -711,21 +711,31 @@ const Dashboard = () => {
       {/* Dynamic Create/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/60 p-2 backdrop-blur-sm sm:p-4">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-builder-800 border border-builder-border rounded p-6 w-full max-w-5xl shadow-2xl my-8"
+              className="my-2 flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded border border-builder-border bg-builder-800 shadow-2xl sm:my-4 sm:max-h-[calc(100dvh-2rem)]"
             >
-              <h3 className="text-xl font-bold text-white mb-2">
-                {modalMode === 'create' ? 'Create New Bot' : 'Configure Bot'}
-              </h3>
-              <p className="text-gray-400 text-sm mb-6">Configure this like an AI employee. The technical prompt is built in the background.</p>
-              
-              <div className="space-y-6">
+              <div className="shrink-0 border-b border-builder-border px-4 py-4 sm:px-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-bold text-white">
+                      {modalMode === 'create' ? 'Create New Bot' : 'Configure Bot'}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-gray-400">Configure this like an AI employee. The technical prompt is built in the background.</p>
+                  </div>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="shrink-0 text-gray-500 transition-colors hover:text-white" aria-label="Close bot setup">
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+              <div className="space-y-5 sm:space-y-6">
                 {/* Core Settings */}
-                <div className="grid gap-4 md:grid-cols-[1fr_180px_1fr]">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)]">
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Assistant Name</label>
                     <input type="text" className="input-field shadow-inner" value={formData.botName} onChange={e => setFormData({...formData, botName: e.target.value})} placeholder="e.g. Dolphin 360 Assistant" />
@@ -741,12 +751,12 @@ const Dashboard = () => {
                 </div>
 
                 <div className="border border-builder-border bg-builder-900/50 p-4">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h4 className="text-sm font-semibold text-white">Assistant Role</h4>
                       <p className="mt-1 text-xs text-gray-500">Choose the job this AI should perform.</p>
                     </div>
-                    <div className="text-xs font-semibold text-accent-500">{getRoleById(formData.assistantRole).label}</div>
+                    <div className="text-xs font-semibold text-accent-500 sm:text-right">{getRoleById(formData.assistantRole).label}</div>
                   </div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {ASSISTANT_ROLES.map((role) => {
@@ -819,14 +829,14 @@ const Dashboard = () => {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start justify-between gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Allowed Website Domains</label>
                       <p className="text-xs text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} domains. Leave empty only when the bot can run anywhere.</p>
                     </div>
                     <span className="text-xs font-semibold text-gray-500">{formData.allowedDomains.length}/{MAX_ALLOWED_DOMAINS}</span>
                   </div>
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <input
                       type="text"
                       className="input-field shadow-inner"
@@ -840,7 +850,7 @@ const Dashboard = () => {
                       }}
                       placeholder="example.com"
                     />
-                    <button type="button" onClick={handleAddDomain} className="btn-secondary shrink-0">Add</button>
+                    <button type="button" onClick={handleAddDomain} className="btn-secondary shrink-0 sm:w-auto">Add</button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {formData.allowedDomains.length === 0 ? (
@@ -857,14 +867,14 @@ const Dashboard = () => {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
                         Reference Data <span className="text-red-300">*</span>
                       </label>
                       <p className="text-xs text-gray-500">Facts, FAQs, services, rules, and handoff details the assistant should know.</p>
                     </div>
-                    <button type="button" onClick={openReferenceGenerator} className="btn-secondary text-sm">
+                    <button type="button" onClick={openReferenceGenerator} className="btn-secondary w-full text-sm sm:w-auto">
                       <SparklesIcon className="mr-2 h-4 w-4" />
                       Help me generate
                     </button>
@@ -908,12 +918,15 @@ const Dashboard = () => {
                   )}
                 </div>
               </div>
+              </div>
 
-              <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-builder-border">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
+              <div className="shrink-0 border-t border-builder-border bg-builder-800 px-4 py-3 sm:px-6">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">Cancel</button>
                 <button onClick={handleSaveBot} disabled={saving} className="btn-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {saving ? 'Saving...' : modalMode === 'create' ? 'Create' : 'Save Changes'}
                 </button>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -922,13 +935,14 @@ const Dashboard = () => {
 
       <AnimatePresence>
         {isGeneratorOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+          <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/70 p-2 sm:p-4">
             <motion.div
               initial={{ opacity: 0, y: 16, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.98 }}
-              className="w-full max-w-2xl border border-builder-border bg-builder-800 p-6 shadow-2xl"
+              className="my-2 flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden border border-builder-border bg-builder-800 shadow-2xl sm:my-4 sm:max-h-[calc(100dvh-2rem)]"
             >
+              <div className="shrink-0 border-b border-builder-border px-4 py-4 sm:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-white">Generate Reference Data</h3>
@@ -940,7 +954,9 @@ const Dashboard = () => {
                   <XMarkIcon className="h-5 w-5" />
                 </button>
               </div>
+              </div>
 
+              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
               {ROLE_GENERATOR_HINTS[formData.assistantRole] && (
                 <div className="mt-4 border border-accent-500/30 bg-accent-500/10 p-3 text-xs leading-5 text-accent-100">
                   {ROLE_GENERATOR_HINTS[formData.assistantRole]}
@@ -960,8 +976,10 @@ const Dashboard = () => {
                   </label>
                 ))}
               </div>
+              </div>
 
-              <div className="mt-6 flex justify-end gap-3 border-t border-builder-border pt-4">
+              <div className="shrink-0 border-t border-builder-border bg-builder-800 px-4 py-3 sm:px-6">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
                 <button type="button" onClick={() => setIsGeneratorOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white">
                   Cancel
                 </button>
@@ -969,6 +987,7 @@ const Dashboard = () => {
                   <SparklesIcon className="mr-2 h-4 w-4" />
                   {generatingReference ? 'Generating...' : 'Generate Draft'}
                 </button>
+              </div>
               </div>
             </motion.div>
           </div>
