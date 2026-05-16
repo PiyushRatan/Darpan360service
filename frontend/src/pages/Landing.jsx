@@ -226,7 +226,7 @@ const IntelligenceCard = ({ card, index }) => (
 );
 
 const LaunchControlSection = () => (
-  <section data-stack-section className="overflow-hidden border-b border-builder-border bg-builder-900 px-6 py-16 lg:py-0">
+  <section data-stack-section="launch" className="overflow-hidden border-b border-builder-border bg-builder-900 px-6 py-16 lg:py-0">
     <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 lg:min-h-screen lg:grid-cols-[0.82fr_1.18fr]">
       <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
         <Reveal className="max-w-3xl">
@@ -249,51 +249,54 @@ const LaunchControlSection = () => (
 );
 
 const ClientLaunchSection = () => (
-  <section data-side-section className="relative overflow-hidden border-b border-builder-border bg-builder-900">
-    <div className="lg:flex lg:min-h-screen lg:items-center lg:overflow-hidden">
-      <div className="mx-auto w-full max-w-7xl px-6 py-16 lg:py-0">
-        <div className="mb-10 grid gap-5 lg:grid-cols-[420px_1fr] lg:items-end">
+  <section data-sequence-section className="border-b border-builder-border bg-builder-900 py-16 lg:py-24">
+    <div className="mx-auto w-full max-w-7xl px-6">
+      <div className="grid gap-10 lg:grid-cols-[390px_1fr] lg:items-start">
+        <div className="lg:sticky lg:top-28">
           <Reveal>
             <div>
               <div className="mb-5 h-px w-16 bg-accent-500" aria-hidden="true" />
               <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
                 Client launch sequence
               </h2>
+              <p className="mt-5 text-sm leading-7 text-gray-400">
+                Move from raw business knowledge to a live assistant with a clear setup path, installation step, and refinement loop.
+              </p>
             </div>
-          </Reveal>
-          <Reveal>
-            <p className="max-w-2xl text-sm leading-7 text-gray-400 lg:ml-auto">
-              Move from raw business knowledge to a live assistant with a clear setup path, installation step, and refinement loop.
-            </p>
           </Reveal>
         </div>
 
-        <div className="relative overflow-visible">
-          <div data-horizontal-track className="flex flex-col gap-4 lg:w-max lg:flex-row lg:gap-5">
+        <div>
+          <div className="space-y-4">
             {launchSteps.map((item, index) => (
-              <article
-                key={item.title}
-                className="min-h-[300px] border border-builder-border bg-builder-800 p-6 lg:w-[560px]"
-              >
-                <div className="flex items-center justify-between border-b border-builder-border pb-5">
-                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-500">
-                    {String(index + 1).padStart(2, '0')} / {item.label}
-                  </span>
-                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-600">
-                    Client step
-                  </span>
-                </div>
-                <h3 className="mt-10 max-w-md text-2xl font-semibold tracking-tight text-white">{item.title}</h3>
-                <p className="mt-5 max-w-md text-sm leading-7 text-gray-400">{item.text}</p>
-                <div className="mt-12 grid grid-cols-4 gap-2" aria-hidden="true">
-                  {launchSteps.map((_, markerIndex) => (
-                    <span
-                      key={markerIndex}
-                      className={`h-1.5 border border-builder-border ${markerIndex <= index ? 'bg-accent-500/70' : 'bg-builder-900'}`}
-                    />
-                  ))}
-                </div>
-              </article>
+              <Reveal key={item.title}>
+                <article
+                  data-sequence-card
+                  data-tilt-card
+                  className="group relative border border-builder-border bg-builder-800 p-6 shadow-sm transition-colors hover:border-gray-500 lg:p-8"
+                >
+                  <div className="absolute inset-0 opacity-[0.03] [background-image:radial-gradient(circle_at_1px_1px,#fff_1px,transparent_0)] [background-size:24px_24px]" aria-hidden="true" />
+                  <div className="relative grid gap-5 lg:grid-cols-[150px_1fr] lg:items-start">
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-500">
+                        {String(index + 1).padStart(2, '0')} / {item.label}
+                      </span>
+                      <div className="mt-5 grid grid-cols-4 gap-2.5" aria-hidden="true">
+                        {launchSteps.map((_, markerIndex) => (
+                          <span
+                            key={markerIndex}
+                            className={`h-1.5 border border-builder-border transition-colors duration-500 ${markerIndex <= index ? 'bg-accent-500' : 'bg-builder-900'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-semibold tracking-tight text-white">{item.title}</h3>
+                      <p className="mt-4 max-w-xl text-sm leading-7 text-gray-400">{item.text}</p>
+                    </div>
+                  </div>
+                </article>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -307,20 +310,26 @@ const ServiceCard = ({ item, index }) => {
 
   return (
     <article
-      data-stack-card
-      className="border border-builder-border bg-builder-800 p-5 shadow-sm transition-colors hover:border-gray-600"
-      style={{ top: `calc(5rem + ${index * 18}px)`, zIndex: index + 1 }}
+      data-tilt-card
+      className="group border border-builder-border bg-builder-800 p-6 shadow-xl transition-colors hover:border-gray-500"
+      style={{ top: `calc(6.5rem + ${index * 22}px)`, zIndex: index + 1 }}
     >
-      <div className="flex items-start gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-builder-border bg-builder-900 text-accent-500">
-          <Icon className="h-5 w-5" />
+      <div className="flex items-start gap-5">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-builder-border bg-builder-900 text-accent-500 shadow-inner group-hover:border-accent-500/30 transition-colors">
+          <Icon className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-            Service part {String(index + 1).padStart(2, '0')}
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-500/80">
+              Module {String(index + 1).padStart(2, '0')}
+            </div>
+            <div className="h-px w-4 bg-builder-border" aria-hidden="true" />
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-gray-600 group-hover:text-gray-400 transition-colors">
+              Managed Service
+            </div>
           </div>
-          <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">{item.title}</h3>
-          <p className="mt-3 text-sm leading-6 text-gray-400">{item.text}</p>
+          <h3 className="mt-3 text-xl font-semibold tracking-tight text-white">{item.title}</h3>
+          <p className="mt-3 text-sm leading-7 text-gray-400">{item.text}</p>
         </div>
       </div>
     </article>
@@ -328,26 +337,25 @@ const ServiceCard = ({ item, index }) => {
 };
 
 const ServiceStackSection = () => (
-  <section data-stack-section className="overflow-hidden border-y border-builder-border bg-builder-900 py-16 lg:py-0">
-    <div data-stack-pin className="mx-auto grid max-w-7xl gap-10 px-6 lg:min-h-screen lg:grid-cols-[0.78fr_1.22fr]">
-      <div className="lg:sticky lg:top-24 lg:self-start lg:py-24">
-        <Reveal>
-          <div className="max-w-2xl">
-            <div className="mb-5 h-px w-16 bg-accent-500" aria-hidden="true" />
-            <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
-              What the service delivers
-            </h2>
-            <p className="mt-5 text-sm leading-7 text-gray-400">
-              A client does not need to understand API keys, hosting, prompts, or Firebase. The value is a configured assistant installed on their website and maintained by you.
-            </p>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Managed delivery sequence
-            </p>
+  <section className="relative isolate z-10 overflow-hidden border-y border-builder-border bg-builder-900 px-6 py-16 lg:py-24">
+    <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+      <div>
+        <Reveal className="max-w-2xl">
+          <div className="mb-6 h-px w-16 bg-accent-500" aria-hidden="true" />
+          <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
+            What the service delivers
+          </h2>
+          <p className="mt-6 text-base leading-8 text-gray-400">
+            A client does not need to understand API keys, hosting, prompts, or Firebase. The value is a fully configured, domain-restricted assistant installed on their website and maintained by your agency.
+          </p>
+          <div className="mt-10 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-gray-500">
+            <span className="h-2 w-2 rounded-full bg-accent-500" />
+            Managed delivery sequence
           </div>
         </Reveal>
       </div>
 
-      <div className="space-y-4 lg:py-24">
+      <div className="space-y-4">
         {deliveryItems.map((item, index) => (
           <ServiceCard key={item.title} item={item} index={index} />
         ))}
@@ -577,7 +585,7 @@ const Landing = () => {
       if (!root) return undefined;
 
       if (prefersReducedMotion) {
-        gsap.set(root.querySelectorAll('[data-reveal], [data-hero-line], [data-stack-card], [data-workflow-node], [data-workflow-answer], [data-workflow-action]'), {
+        gsap.set(root.querySelectorAll('[data-reveal], [data-hero-line], [data-sequence-card], [data-stack-card], [data-workflow-node], [data-workflow-answer], [data-workflow-action]'), {
           clearProps: 'all',
           opacity: 1
         });
@@ -588,6 +596,7 @@ const Landing = () => {
       gsap.set('[data-hero-card]', { autoAlpha: 0, y: 34, rotationX: -4 });
       gsap.set('[data-checklist-item]', { autoAlpha: 0, x: 18 });
       gsap.set('[data-reveal]', { autoAlpha: 0, y: 26 });
+      gsap.set('[data-sequence-card]', { autoAlpha: 0, y: 42, scale: 0.985 });
 
       gsap.timeline({ defaults: { ease: 'power3.out' } })
         .to('[data-hero-line]', { autoAlpha: 1, y: 0, duration: 0.85, stagger: 0.08 })
@@ -655,11 +664,31 @@ const Landing = () => {
         });
       });
 
+      gsap.utils.toArray('[data-sequence-section]').forEach((section) => {
+        const cards = gsap.utils.toArray(section.querySelectorAll('[data-sequence-card]'));
+        if (cards.length === 0) return;
+
+        gsap.to(cards, {
+          autoAlpha: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.72,
+          ease: 'power3.out',
+          stagger: 0.12,
+          scrollTrigger: {
+            trigger: section,
+            start: 'top 72%',
+            once: true
+          }
+        });
+      });
+
       const mm = gsap.matchMedia();
 
       mm.add('(min-width: 1024px)', () => {
-        gsap.utils.toArray('[data-stack-section]').forEach((section) => {
+        const createStackTimeline = (section) => {
           const cards = gsap.utils.toArray(section.querySelectorAll('[data-stack-card]'));
+
           gsap.set(cards, {
             autoAlpha: 0,
             y: (index) => 96 + index * 18,
@@ -675,6 +704,7 @@ const Landing = () => {
               pinSpacing: true,
               scrub: 1,
               anticipatePin: 1,
+              preventOverlaps: true,
               invalidateOnRefresh: true
             }
           });
@@ -696,38 +726,11 @@ const Landing = () => {
               ease: 'none'
             }, '>');
           }
+        };
+
+        gsap.utils.toArray('[data-stack-section]').forEach((section) => {
+          createStackTimeline(section);
         });
-
-        const sideSection = root.querySelector('[data-side-section]');
-        const track = root.querySelector('[data-horizontal-track]');
-        if (sideSection && track) {
-          const getTravel = () => Math.max(0, track.scrollWidth - sideSection.clientWidth + 48);
-          const timeline = gsap.timeline({
-            scrollTrigger: {
-              trigger: sideSection,
-              start: 'top top',
-              end: () => `+=${Math.max(700, getTravel() + 300)}`,
-              pin: true,
-              pinSpacing: true,
-              scrub: 1,
-              anticipatePin: 1,
-              invalidateOnRefresh: true
-            }
-          });
-
-          timeline.to(track, {
-            x: () => {
-              const maxTravel = getTravel();
-              return maxTravel > 0 ? -maxTravel : 0;
-            },
-            ease: 'none',
-            duration: 1
-          }).to(track, {
-            x: () => -getTravel(),
-            duration: 0.22,
-            ease: 'none'
-          });
-        }
 
         const workflowSection = root.querySelector('[data-workflow-section]');
         const workflowPath = root.querySelector('[data-workflow-path]');
@@ -755,6 +758,7 @@ const Landing = () => {
               pinSpacing: true,
               scrub: 1,
               anticipatePin: 1,
+              preventOverlaps: true,
               invalidateOnRefresh: true
             }
           })
@@ -826,7 +830,7 @@ const Landing = () => {
   );
 
   return (
-    <div ref={rootRef} className="relative min-h-screen overflow-hidden bg-builder-900 text-gray-200 selection:bg-accent-500 selection:text-white">
+    <div ref={rootRef} className="relative min-h-screen overflow-x-hidden bg-builder-900 text-gray-200 selection:bg-accent-500 selection:text-white">
       <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.035] noise-layer" aria-hidden="true" />
       <div
         data-progress-bar
