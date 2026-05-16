@@ -13,9 +13,9 @@ const MAX_HISTORY_MESSAGES = 20;
 const MAX_STORED_MESSAGES = 40;
 const SESSION_ID_PATTERN = /^sess_[a-f0-9]{32}$/;
 
-const validateBotAccess = (req, bot) => {
+const validateBotAccess = (req, accessConfig) => {
     const sourceOrigin = getRequestSourceOrigin(req);
-    const sourceCheck = validateBotSource(bot, sourceOrigin);
+    const sourceCheck = validateBotSource(accessConfig, sourceOrigin);
 
     if (!sourceCheck.allowed) {
         return {
@@ -33,6 +33,29 @@ const cleanChatMessage = (message) => (
         .replace(/\u0000/g, '')
         .trim()
 );
+
+const getAuthorizedBotAccess = async (req, botId) => {
+    const accessConfig = await Bot.findAccessConfigById(botId);
+
+    if (!accessConfig) {
+        return {
+            allowed: false,
+            status: 404,
+            error: 'Bot not found'
+        };
+    }
+
+    const accessCheck = validateBotAccess(req, accessConfig);
+
+    if (!accessCheck.allowed) {
+        return accessCheck;
+    }
+
+    return {
+        allowed: true,
+        accessConfig
+    };
+};
 
 const handleIncomingChat = async (req, res) => {
     try {
@@ -65,15 +88,15 @@ const handleIncomingChat = async (req, res) => {
             return res.status(400).json({ error: "Invalid clientSessionId" });
         }
 
-        // 1. Fetch the requested Bot configuration from Firebase
+        // Only allowed domains can load full bot configuration, sessions, or AI context.
+        const accessCheck = await getAuthorizedBotAccess(req, botId);
+        if (!accessCheck.allowed) {
+            return res.status(accessCheck.status).json({ error: accessCheck.error });
+        }
+
         const bot = await Bot.findById(botId);
         if (!bot) {
             return res.status(404).json({ error: "Bot not found" });
-        }
-
-        const accessCheck = validateBotAccess(req, bot);
-        if (!accessCheck.allowed) {
-            return res.status(accessCheck.status).json({ error: accessCheck.error });
         }
 
         const quota = await BotMessageQuota.consumeBotMessageQuota(botId);
@@ -144,14 +167,14 @@ const getBotConfig = async (req, res) => {
             return res.status(400).json({ error: "Invalid bot id" });
         }
 
+        const accessCheck = await getAuthorizedBotAccess(req, botId);
+        if (!accessCheck.allowed) {
+            return res.status(accessCheck.status).json({ error: accessCheck.error });
+        }
+
         const bot = await Bot.findById(botId);
         if (!bot) {
             return res.status(404).json({ error: "Bot not found" });
-        }
-
-        const accessCheck = validateBotAccess(req, bot);
-        if (!accessCheck.allowed) {
-            return res.status(accessCheck.status).json({ error: accessCheck.error });
         }
 
         res.status(200).json({
@@ -177,12 +200,7 @@ const getChatHistory = async (req, res) => {
             return res.status(400).json({ error: "Invalid clientSessionId" });
         }
 
-        const bot = await Bot.findById(botId);
-        if (!bot) {
-            return res.status(404).json({ error: "Bot not found" });
-        }
-
-        const accessCheck = validateBotAccess(req, bot);
+        const accessCheck = await getAuthorizedBotAccess(req, botId);
         if (!accessCheck.allowed) {
             return res.status(accessCheck.status).json({ error: accessCheck.error });
         }

@@ -28,6 +28,18 @@ const fromDoc = (doc) => {
     };
 };
 
+const fromAccessDoc = (doc) => {
+    if (!doc.exists) return null;
+
+    const data = doc.data();
+    return {
+        _id: doc.id,
+        allowedDomains: Array.isArray(data.allowedDomains)
+            ? data.allowedDomains
+            : []
+    };
+};
+
 const cleanString = (value, fallback, maxLength) => {
     if (typeof value !== 'string') return fallback;
     return value.trim().slice(0, maxLength);
@@ -106,6 +118,18 @@ const Bot = {
     async findById(id) {
         if (!id) return null;
         return fromDoc(await bots.doc(id).get());
+    },
+
+    async findAccessConfigById(id) {
+        if (!id) return null;
+
+        const snapshot = await bots
+            .where(admin.firestore.FieldPath.documentId(), '==', id)
+            .select('allowedDomains')
+            .limit(1)
+            .get();
+
+        return snapshot.empty ? null : fromAccessDoc(snapshot.docs[0]);
     },
 
     async findByIdAndUpdate(id, payload) {

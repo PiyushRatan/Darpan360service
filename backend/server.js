@@ -71,7 +71,7 @@ const corsOptionsDelegate = async (req, callback) => {
             const botId = chatMatch[1];
             try {
                 const Bot = require('./models/Bot');
-                const bot = await Bot.findById(botId, 'allowedDomains');
+                const bot = await Bot.findAccessConfigById(botId);
                 if (bot && bot.allowedDomains && bot.allowedDomains.length > 0) {
                     const originHostname = normalizeHostname(origin);
                     isDomainAllowed = bot.allowedDomains.some(domain => isAllowedHostname(originHostname, domain));
