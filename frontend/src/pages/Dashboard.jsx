@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon, BookOpenIcon, SparklesIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, CodeBracketIcon, ChartBarIcon, Cog8ToothIcon, ArrowRightOnRectangleIcon, CheckCircleIcon, ExclamationTriangleIcon, InformationCircleIcon, XMarkIcon, BookOpenIcon, SparklesIcon, ArrowTopRightOnSquareIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/useAuth';
 import { secureFetch } from '../utils/api';
@@ -42,6 +42,12 @@ const createEmbedScript = (bot) => {
 
 const DEFAULT_CAPABILITIES = ['answer-questions', 'generate-text', 'workflow-help'];
 const MAX_ALLOWED_DOMAINS = 2;
+const SETUP_SECTIONS = [
+  { id: 'identity', label: 'Identity', description: 'Name and brand details.' },
+  { id: 'behavior', label: 'Behavior', description: 'Role, tone, language, and capabilities.' },
+  { id: 'access', label: 'Access', description: 'Approved website domains.' },
+  { id: 'knowledge', label: 'Knowledge', description: 'Reference data and opening message.' }
+];
 
 const createEmptyGeneratorAnswers = () => (
   BASE_GENERATOR_FIELDS.reduce((answers, field) => ({ ...answers, [field.id]: '' }), {})
@@ -100,6 +106,8 @@ const Dashboard = () => {
   const [generatorAnswers, setGeneratorAnswers] = useState(createEmptyGeneratorAnswers);
   const [generatingReference, setGeneratingReference] = useState(false);
   const [createdBotPrompt, setCreatedBotPrompt] = useState(null);
+  const [activeSetupSection, setActiveSetupSection] = useState('identity');
+  const [unlockedSetupIndex, setUnlockedSetupIndex] = useState(0);
 
   // Notification State for Copying
   const [copiedId, setCopiedId] = useState(null);
@@ -164,6 +172,8 @@ const Dashboard = () => {
     setShowAdvanced(false);
     setGeneratorAnswers(createEmptyGeneratorAnswers());
     setCreatedBotPrompt(null);
+    setActiveSetupSection('identity');
+    setUnlockedSetupIndex(mode === 'edit' ? SETUP_SECTIONS.length - 1 : 0);
     if (mode === 'edit' && bot) {
       const assistantRole = bot.assistantRole || 'general-assistant';
       const toneOptions = getToneOptions(assistantRole);
@@ -284,6 +294,148 @@ const Dashboard = () => {
       type: 'info',
       title: 'Domain removed',
       message: `${domain} was removed from this bot.`
+    });
+  };
+
+  const getSetupSectionIndex = (sectionId) => (
+    SETUP_SECTIONS.findIndex((section) => section.id === sectionId)
+  );
+
+  const getSectionSummary = (sectionId) => {
+    if (sectionId === 'identity') {
+      return formData.botName.trim() || 'Name and brand pending';
+    }
+
+    if (sectionId === 'behavior') {
+      const language = LANGUAGE_STYLES.find(item => item.id === formData.languageStyle)?.label || 'English';
+      return `${getRoleById(formData.assistantRole).label} - ${formData.tone} - ${language}`;
+    }
+
+    if (sectionId === 'access') {
+      return formData.allowedDomains.length > 0
+        ? formData.allowedDomains.join(', ')
+        : 'Darpan360 only';
+    }
+
+    if (sectionId === 'knowledge') {
+      return formData.knowledgeBaseText.trim().length >= 20
+        ? 'Reference data ready'
+        : 'Reference data required';
+    }
+
+    return '';
+  };
+
+  const validateSetupSection = (sectionId) => {
+    if (sectionId === 'identity') {
+      if (!formData.botName.trim()) {
+        pushToast({
+          type: 'error',
+          title: 'Identity is incomplete',
+          message: 'Add an assistant name before moving to Behavior.'
+        });
+        return false;
+      }
+
+      if (!/^#[0-9a-fA-F]{6}$/.test(formData.primaryColor)) {
+        pushToast({
+          type: 'error',
+          title: 'Brand color needs attention',
+          message: 'Use a 6-digit hex color like #2563EB.'
+        });
+        return false;
+      }
+
+      if (formData.avatarImgUrl.trim()) {
+        try {
+          const avatarUrl = new URL(formData.avatarImgUrl.trim());
+          if (!['http:', 'https:'].includes(avatarUrl.protocol)) {
+            throw new Error('Unsupported protocol');
+          }
+        } catch {
+          pushToast({
+            type: 'error',
+            title: 'Profile image URL is invalid',
+            message: 'Use a full http or https URL like https://example.com/logo.png.'
+          });
+          return false;
+        }
+      }
+    }
+
+    if (sectionId === 'behavior' && formData.capabilities.length === 0) {
+      pushToast({
+        type: 'error',
+        title: 'Behavior is incomplete',
+        message: 'Keep at least one capability enabled.'
+      });
+      return false;
+    }
+
+    if (sectionId === 'access') {
+      if (domainDraft.trim()) {
+        pushToast({
+          type: 'warning',
+          title: 'Domain draft not added',
+          message: 'Click Add or clear the domain field before moving to Knowledge.'
+        });
+        return false;
+      }
+
+      if (formData.allowedDomains.length > MAX_ALLOWED_DOMAINS) {
+        pushToast({
+          type: 'error',
+          title: 'Too many domains',
+          message: `Add no more than ${MAX_ALLOWED_DOMAINS} domains for one chatbot.`
+        });
+        return false;
+      }
+    }
+
+    if (sectionId === 'knowledge' && formData.knowledgeBaseText.trim().length < 20) {
+      pushToast({
+        type: 'error',
+        title: 'Knowledge is incomplete',
+        message: 'Add reference data or use Help me write before creating the chatbot.'
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleOpenSetupSection = (sectionId) => {
+    const sectionIndex = getSetupSectionIndex(sectionId);
+
+    if (modalMode === 'create' && sectionIndex > unlockedSetupIndex) {
+      const lockedBy = SETUP_SECTIONS[unlockedSetupIndex]?.label || 'current';
+      pushToast({
+        type: 'info',
+        title: 'Follow the setup order',
+        message: `Complete ${lockedBy} first, then continue downward.`
+      });
+      return;
+    }
+
+    setActiveSetupSection(sectionId);
+  };
+
+  const handleContinueSetupSection = (sectionId) => {
+    if (!validateSetupSection(sectionId)) return;
+
+    const sectionIndex = getSetupSectionIndex(sectionId);
+    const nextSection = SETUP_SECTIONS[sectionIndex + 1];
+
+    if (nextSection) {
+      setUnlockedSetupIndex(prev => Math.max(prev, sectionIndex + 1));
+      setActiveSetupSection(nextSection.id);
+      return;
+    }
+
+    pushToast({
+      type: 'success',
+      title: 'Setup sections complete',
+      message: 'Review the details and create the chatbot.'
     });
   };
 
@@ -554,6 +706,75 @@ const Dashboard = () => {
     }
   };
 
+  const renderSetupSection = ({ id, label, description, required = false, children }) => {
+    const sectionIndex = getSetupSectionIndex(id);
+    const isActive = activeSetupSection === id;
+    const isLocked = modalMode === 'create' && sectionIndex > unlockedSetupIndex;
+    const nextSection = SETUP_SECTIONS[sectionIndex + 1];
+
+    return (
+      <div className={`border transition-colors ${isActive ? 'border-accent-500/50 bg-builder-900/60' : 'border-builder-border bg-builder-900/35'}`}>
+        <button
+          type="button"
+          onClick={() => handleOpenSetupSection(id)}
+          className={`flex w-full items-start justify-between gap-4 p-3 text-left transition-colors sm:p-4 ${isLocked ? 'cursor-not-allowed opacity-60' : 'hover:bg-builder-800/60'}`}
+          aria-expanded={isActive}
+        >
+          <div className="flex min-w-0 gap-3">
+            <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border text-[11px] font-bold ${isActive ? 'border-accent-500 text-accent-500' : 'border-builder-border text-gray-500'}`}>
+              {sectionIndex + 1}
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="text-sm font-semibold text-white">{label}</h4>
+                {required && <span className="border border-red-300/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>}
+                {isLocked && <span className="border border-builder-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Locked</span>}
+              </div>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{description}</p>
+              <p className="mt-2 truncate text-xs font-semibold text-gray-300">{getSectionSummary(id)}</p>
+            </div>
+          </div>
+          <ChevronDownIcon className={`mt-1 h-4 w-4 shrink-0 text-gray-500 transition-transform ${isActive ? 'rotate-180 text-accent-500' : ''}`} />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {isActive && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <div className="border-t border-builder-border p-3 sm:p-4">
+                {children}
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  {sectionIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveSetupSection(SETUP_SECTIONS[sectionIndex - 1].id)}
+                      className="w-full px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white sm:w-auto"
+                    >
+                      Back
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleContinueSetupSection(id)}
+                    className="btn-secondary w-full text-sm sm:w-auto"
+                  >
+                    {nextSection ? `Continue to ${nextSection.label}` : modalMode === 'create' ? 'Ready to Create' : 'Done'}
+                    {nextSection && <ChevronDownIcon className="ml-2 h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
   if (!currentUser || loading) return <SubPageLoader label="Loading dashboard" />;
 
   return (
@@ -815,24 +1036,32 @@ const Dashboard = () => {
               <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5">
               <div className="space-y-4 sm:space-y-5">
                 <div className="grid gap-2 text-xs font-semibold text-gray-400 sm:grid-cols-4">
-                  {['Identity', 'Behavior', 'Access', 'Knowledge'].map((item, index) => (
-                    <div key={item} className="flex items-center gap-2 border border-builder-border bg-builder-900/70 px-3 py-2">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-builder-border text-[10px] text-accent-500">{index + 1}</span>
-                      <span>{item}</span>
-                    </div>
-                  ))}
+                  {SETUP_SECTIONS.map((section, index) => {
+                    const isLocked = modalMode === 'create' && index > unlockedSetupIndex;
+                    return (
+                      <button
+                        key={section.id}
+                        type="button"
+                        onClick={() => handleOpenSetupSection(section.id)}
+                        className={`flex items-center justify-between gap-2 border px-3 py-2 text-left transition-colors ${activeSetupSection === section.id ? 'border-accent-500/50 bg-accent-500/10 text-white' : 'border-builder-border bg-builder-900/70 hover:border-gray-600 hover:text-white'} ${isLocked ? 'opacity-50' : ''}`}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-builder-border text-[10px] text-accent-500">{index + 1}</span>
+                          <span className="truncate">{section.label}</span>
+                        </span>
+                        <ChevronDownIcon className={`h-3.5 w-3.5 shrink-0 transition-transform ${activeSetupSection === section.id ? 'rotate-180' : ''}`} />
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {/* Core Settings */}
-                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">Identity</h4>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">Name the assistant and set the client-facing brand details.</p>
-                    </div>
-                    <span className="shrink-0 border border-red-300/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_minmax(0,1fr)]">
+                {renderSetupSection({
+                  id: 'identity',
+                  label: 'Identity',
+                  description: 'Name the assistant and set client-facing brand details.',
+                  required: true,
+                  children: (
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_minmax(0,1fr)]">
                     <div>
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Assistant Name</label>
                       <input type="text" className="input-field shadow-inner" value={formData.botName} onChange={e => setFormData({...formData, botName: e.target.value})} placeholder="e.g. Dolphin 360 Assistant" />
@@ -845,191 +1074,212 @@ const Dashboard = () => {
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Profile Image / Logo URL</label>
                       <input type="text" className="input-field shadow-inner" value={formData.avatarImgUrl} onChange={e => setFormData({...formData, avatarImgUrl: e.target.value})} placeholder="https://example.com/logo.png" />
                     </div>
-                  </div>
-                </div>
+                    </div>
+                  )
+                })}
 
-                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold text-white">Behavior</h4>
-                        <span className="border border-red-300/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>
+                {renderSetupSection({
+                  id: 'behavior',
+                  label: 'Behavior',
+                  description: 'Choose role, language, tone, and enabled capabilities.',
+                  required: true,
+                  children: (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Assistant Role</div>
+                          <div className="text-xs font-semibold text-accent-500 sm:text-right">{getRoleById(formData.assistantRole).label}</div>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {ASSISTANT_ROLES.map((role) => {
+                            const selected = formData.assistantRole === role.id;
+                            return (
+                              <button
+                                key={role.id}
+                                type="button"
+                                onClick={() => updateAssistantRole(role.id)}
+                                className={`border p-2.5 text-left transition-colors sm:p-3 ${selected ? 'border-accent-500 bg-accent-500/10 text-white' : 'border-builder-border bg-builder-800 text-gray-300 hover:border-gray-600 hover:text-white'}`}
+                              >
+                                <div className="text-sm font-semibold">{role.label}</div>
+                                <div className="mt-1 text-[11px] leading-4 text-gray-500 sm:text-xs sm:leading-5">{role.description}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">Choose the job, speaking style, and practical abilities for this assistant.</p>
-                    </div>
-                    <div className="text-xs font-semibold text-accent-500 sm:text-right">{getRoleById(formData.assistantRole).label}</div>
-                  </div>
-                  <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-400">Assistant Role</div>
-                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {ASSISTANT_ROLES.map((role) => {
-                      const selected = formData.assistantRole === role.id;
-                      return (
-                        <button
-                          key={role.id}
-                          type="button"
-                          onClick={() => updateAssistantRole(role.id)}
-                          className={`border p-2.5 text-left transition-colors sm:p-3 ${selected ? 'border-accent-500 bg-accent-500/10 text-white' : 'border-builder-border bg-builder-800 text-gray-300 hover:border-gray-600 hover:text-white'}`}
-                        >
-                          <div className="text-sm font-semibold">{role.label}</div>
-                          <div className="mt-1 text-[11px] leading-4 text-gray-500 sm:text-xs sm:leading-5">{role.description}</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                <div className="grid gap-3 border border-builder-border bg-builder-900/40 p-3 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Language Style</label>
-                    <select
-                      className="input-field shadow-inner"
-                      value={formData.languageStyle}
-                      onChange={e => setFormData({...formData, languageStyle: e.target.value})}
-                    >
-                      {LANGUAGE_STYLES.map((language) => (
-                        <option key={language.id} value={language.id}>{language.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Tone</label>
-                    <div className="flex flex-wrap gap-2">
-                      {getToneOptions(formData.assistantRole).map((tone) => (
-                        <button
-                          key={tone}
-                          type="button"
-                          onClick={() => setFormData({...formData, tone})}
-                          className={`border px-3 py-2 text-xs font-semibold transition-colors ${formData.tone === tone ? 'border-accent-500 bg-accent-500/15 text-white' : 'border-builder-border text-gray-400 hover:border-gray-600 hover:text-white'}`}
-                        >
-                          {tone}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                      <div className="grid gap-3 border border-builder-border bg-builder-900/40 p-3 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Language Style</label>
+                          <select
+                            className="input-field shadow-inner"
+                            value={formData.languageStyle}
+                            onChange={e => setFormData({...formData, languageStyle: e.target.value})}
+                          >
+                            {LANGUAGE_STYLES.map((language) => (
+                              <option key={language.id} value={language.id}>{language.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Tone</label>
+                          <div className="flex flex-wrap gap-2">
+                            {getToneOptions(formData.assistantRole).map((tone) => (
+                              <button
+                                key={tone}
+                                type="button"
+                                onClick={() => setFormData({...formData, tone})}
+                                className={`border px-3 py-2 text-xs font-semibold transition-colors ${formData.tone === tone ? 'border-accent-500 bg-accent-500/15 text-white' : 'border-builder-border text-gray-400 hover:border-gray-600 hover:text-white'}`}
+                              >
+                                {tone}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
 
-                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
-                  <h4 className="text-sm font-semibold text-white">Capabilities</h4>
-                  <p className="mt-1 text-xs leading-5 text-gray-500">Keep enabled items practical; these become behavioral guardrails for the bot.</p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {CAPABILITY_OPTIONS.map((capability) => (
-                      <label key={capability.id} className="flex items-center gap-2 border border-builder-border bg-builder-800 px-3 py-2 text-sm text-gray-300">
+                      <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
+                        <h4 className="text-sm font-semibold text-white">Capabilities</h4>
+                        <p className="mt-1 text-xs leading-5 text-gray-500">Keep enabled items practical; these become behavioral guardrails for the bot.</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {CAPABILITY_OPTIONS.map((capability) => (
+                            <label key={capability.id} className="flex items-center gap-2 border border-builder-border bg-builder-800 px-3 py-2 text-sm text-gray-300">
+                              <input
+                                type="checkbox"
+                                checked={formData.capabilities.includes(capability.id)}
+                                onChange={() => toggleCapability(capability.id)}
+                                className="h-4 w-4 accent-accent-500"
+                              />
+                              {capability.label}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="mt-4 border-l-2 border-amber-400/70 bg-amber-400/5 p-3 text-xs leading-6 text-gray-300">
+                          <p className="font-semibold text-amber-200">Capability notice</p>
+                          <p className="mt-1">This AI can answer questions, generate text, and help with workflows.</p>
+                          <p className="mt-2 text-gray-400">It cannot physically perform tasks, make phone calls, book appointments automatically, access private accounts unless connected, or guarantee perfect accuracy.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {renderSetupSection({
+                  id: 'access',
+                  label: 'Access',
+                  description: 'Control which client websites can use this bot.',
+                  children: (
+                    <div>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-semibold text-white">Website Access</h4>
+                          <p className="mt-1 text-xs leading-5 text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} client domains. Darpan360 stays allowed by default.</p>
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-gray-500">{formData.allowedDomains.length}/{MAX_ALLOWED_DOMAINS}</span>
+                      </div>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                         <input
-                          type="checkbox"
-                          checked={formData.capabilities.includes(capability.id)}
-                          onChange={() => toggleCapability(capability.id)}
-                          className="h-4 w-4 accent-accent-500"
+                          type="text"
+                          className="input-field shadow-inner"
+                          value={domainDraft}
+                          onChange={e => setDomainDraft(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddDomain();
+                            }
+                          }}
+                          placeholder="example.com"
                         />
-                        {capability.label}
-                      </label>
-                    ))}
-                  </div>
-                  <div className="mt-4 border-l-2 border-amber-400/70 bg-amber-400/5 p-3 text-xs leading-6 text-gray-300">
-                    <p className="font-semibold text-amber-200">Capability notice</p>
-                    <p className="mt-1">This AI can answer questions, generate text, and help with workflows.</p>
-                    <p className="mt-2 text-gray-400">It cannot physically perform tasks, make phone calls, book appointments automatically, access private accounts unless connected, or guarantee perfect accuracy.</p>
-                  </div>
-                </div>
-
-                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">Website Access</h4>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">Add up to {MAX_ALLOWED_DOMAINS} client domains. Darpan360 stays allowed by default.</p>
-                    </div>
-                    <span className="shrink-0 text-xs font-semibold text-gray-500">{formData.allowedDomains.length}/{MAX_ALLOWED_DOMAINS}</span>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <input
-                      type="text"
-                      className="input-field shadow-inner"
-                      value={domainDraft}
-                      onChange={e => setDomainDraft(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddDomain();
-                        }
-                      }}
-                      placeholder="example.com"
-                    />
-                    <button type="button" onClick={handleAddDomain} className="btn-secondary shrink-0 sm:w-auto">Add</button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {formData.allowedDomains.length === 0 ? (
-                      <span className="border border-dashed border-builder-border px-3 py-2 text-xs text-gray-500">
-                        No client domain added - Darpan360 only
-                      </span>
-                    ) : formData.allowedDomains.map((domain) => (
-                      <span key={domain} className="inline-flex items-center gap-2 border border-builder-border bg-builder-900 px-3 py-2 text-xs font-semibold text-gray-200">
-                        {domain}
-                        <button type="button" onClick={() => handleRemoveDomain(domain)} className="text-gray-500 hover:text-red-300" aria-label={`Remove ${domain}`}>
-                          <XMarkIcon className="h-3.5 w-3.5" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold text-white">Reference Data</h4>
-                        <span className="border border-red-300/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>
+                        <button type="button" onClick={handleAddDomain} className="btn-secondary shrink-0 sm:w-auto">Add</button>
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">Facts, FAQs, services, rules, and handoff details the assistant should know.</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {formData.allowedDomains.length === 0 ? (
+                          <span className="border border-dashed border-builder-border px-3 py-2 text-xs text-gray-500">
+                            No client domain added - Darpan360 only
+                          </span>
+                        ) : formData.allowedDomains.map((domain) => (
+                          <span key={domain} className="inline-flex items-center gap-2 border border-builder-border bg-builder-900 px-3 py-2 text-xs font-semibold text-gray-200">
+                            {domain}
+                            <button type="button" onClick={() => handleRemoveDomain(domain)} className="text-gray-500 hover:text-red-300" aria-label={`Remove ${domain}`}>
+                              <XMarkIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <button type="button" onClick={openReferenceGenerator} className="btn-secondary w-full text-sm sm:w-auto">
-                      <SparklesIcon className="mr-2 h-4 w-4" />
-                      Help me write
-                    </button>
-                  </div>
-                  <textarea
-                    className="input-field mt-3 min-h-[150px] border-accent-500/30 shadow-inner sm:min-h-[170px]"
-                    value={formData.knowledgeBaseText}
-                    onChange={e => setFormData({...formData, knowledgeBaseText: e.target.value})}
-                    placeholder="Paste client services, FAQs, pricing notes, policies, working hours, and handoff instructions..."
-                  />
-                </div>
+                  )
+                })}
 
-                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Opening Message</label>
-                      <p className="text-xs leading-5 text-gray-500">Leave blank to auto-generate from the reference data.</p>
-                    </div>
-                    <span className="shrink-0 border border-builder-border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Editable</span>
-                  </div>
-                  <textarea
-                    className="input-field mt-3 min-h-[74px] shadow-inner"
-                    value={formData.welcomeMessage}
-                    onChange={e => setFormData({...formData, welcomeMessage: e.target.value})}
-                    placeholder={buildOpeningMessage(formData)}
-                  />
-                </div>
+                {renderSetupSection({
+                  id: 'knowledge',
+                  label: 'Knowledge',
+                  description: 'Add reference data, opening message, and advanced rules.',
+                  required: true,
+                  children: (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-semibold text-white">Reference Data</h4>
+                              <span className="border border-red-300/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200">Required</span>
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-gray-500">Facts, FAQs, services, rules, and handoff details the assistant should know.</p>
+                          </div>
+                          <button type="button" onClick={openReferenceGenerator} className="btn-secondary w-full text-sm sm:w-auto">
+                            <SparklesIcon className="mr-2 h-4 w-4" />
+                            Help me write
+                          </button>
+                        </div>
+                        <textarea
+                          className="input-field mt-3 min-h-[150px] border-accent-500/30 shadow-inner sm:min-h-[170px]"
+                          value={formData.knowledgeBaseText}
+                          onChange={e => setFormData({...formData, knowledgeBaseText: e.target.value})}
+                          placeholder="Paste client services, FAQs, pricing notes, policies, working hours, and handoff instructions..."
+                        />
+                      </div>
 
-                <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(prev => !prev)}
-                    className="text-sm font-semibold text-accent-500 hover:text-accent-600"
-                  >
-                    {showAdvanced ? 'Hide advanced customization' : 'Show advanced customization'}
-                  </button>
-                  <p className="mt-1 text-xs leading-5 text-gray-500">Optional edge-case rules stay tucked away until needed.</p>
-                  {showAdvanced && (
-                    <div className="mt-3">
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Additional Instructions</label>
-                      <textarea
-                        className="input-field min-h-[90px] shadow-inner"
-                        value={formData.advancedInstructions}
-                        onChange={e => setFormData({...formData, advancedInstructions: e.target.value})}
-                        placeholder="Optional rules for edge cases, escalation, words to avoid, or brand-specific behavior."
-                      />
+                      <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Opening Message</label>
+                            <p className="text-xs leading-5 text-gray-500">Leave blank to auto-generate from the reference data.</p>
+                          </div>
+                          <span className="shrink-0 border border-builder-border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Editable</span>
+                        </div>
+                        <textarea
+                          className="input-field mt-3 min-h-[74px] shadow-inner"
+                          value={formData.welcomeMessage}
+                          onChange={e => setFormData({...formData, welcomeMessage: e.target.value})}
+                          placeholder={buildOpeningMessage(formData)}
+                        />
+                      </div>
+
+                      <div className="border border-builder-border bg-builder-900/40 p-3 sm:p-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvanced(prev => !prev)}
+                          className="text-sm font-semibold text-accent-500 hover:text-accent-600"
+                        >
+                          {showAdvanced ? 'Hide advanced customization' : 'Show advanced customization'}
+                        </button>
+                        <p className="mt-1 text-xs leading-5 text-gray-500">Optional edge-case rules stay tucked away until needed.</p>
+                        {showAdvanced && (
+                          <div className="mt-3">
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Additional Instructions</label>
+                            <textarea
+                              className="input-field min-h-[90px] shadow-inner"
+                              value={formData.advancedInstructions}
+                              onChange={e => setFormData({...formData, advancedInstructions: e.target.value})}
+                              placeholder="Optional rules for edge cases, escalation, words to avoid, or brand-specific behavior."
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  )
+                })}
               </div>
               </div>
 
