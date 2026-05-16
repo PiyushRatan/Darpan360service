@@ -14,3 +14,5 @@ backend/*serviceAccount*.json
 backend/*firebase-adminsdk*.json
 
 Don't Push Yours Gitignore too. lol
+
+.vercel
