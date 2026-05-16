@@ -50,34 +50,105 @@ const appendSourceOrigin = (endpoint, sourceOrigin) => {
 };
 
 const getChatFailureMessage = (error) => {
+  const diagnostics = getChatErrorDiagnostics(error);
+  if (diagnostics.userMessage) return diagnostics.userMessage;
+
+  return error?.message || 'The chatbot could not answer right now.';
+};
+
+const getChatErrorDiagnostics = (error) => {
   const retryText = error?.retryAfterSeconds
     ? ` Please try again in ${error.retryAfterSeconds} seconds.`
     : ' Please try again shortly.';
 
   if (error?.code === 'BOT_MESSAGE_RATE_LIMITED') {
-    if (error.message) return error.message;
-    return error.limit && error.windowSeconds
-      ? `This bot is currently limited to ${error.limit} messages every ${error.windowSeconds} seconds across all visitors.${retryText}`
-      : `This chatbot is receiving too many messages right now.${retryText}`;
+    return {
+      title: 'Bot message limit reached',
+      meaning: 'This is the per-bot safety limit, shared by all visitor sessions for this bot.',
+      likelyCause: 'The chatbot received too many messages within its one-minute window.',
+      nextStep: `Wait ${error.retryAfterSeconds || 60} seconds, then try again.`,
+      userMessage: error.message || (
+        error.limit && error.windowSeconds
+          ? `This bot is currently limited to ${error.limit} messages every ${error.windowSeconds} seconds across all visitors.${retryText}`
+          : `This chatbot is receiving too many messages right now.${retryText}`
+      )
+    };
   }
 
   if (error?.code === 'CHAT_ROUTE_RATE_LIMITED') {
-    return error.message || `Too many chat requests from this connection.${retryText}`;
+    return {
+      title: 'Chat route rate limit reached',
+      meaning: 'This is the backend /api/chat route limit for the current connection or IP.',
+      likelyCause: 'Too many chat requests were sent too quickly from the same browser, network, or automation.',
+      nextStep: `Wait ${error.retryAfterSeconds || 60} seconds, then try again.`,
+      userMessage: error.message || `Too many chat requests from this connection.${retryText}`
+    };
   }
 
   if (error?.code === 'AI_PROVIDER_RATE_LIMITED') {
-    return `The AI service is temporarily rate-limited.${retryText}`;
+    return {
+      title: 'AI provider rate limit reached',
+      meaning: 'The Gemini/Groq provider or API key pool is rate-limited.',
+      likelyCause: 'The configured AI provider key hit quota or temporary provider throttling.',
+      nextStep: `Wait ${error.retryAfterSeconds || 60} seconds, or add/rotate provider keys.`,
+      userMessage: `The AI service is temporarily rate-limited.${retryText}`
+    };
   }
 
   if (error?.code === 'AI_KEYS_MISSING' || error?.code === 'AI_SERVICE_UNAVAILABLE' || error?.status >= 500) {
-    return error.message || `A service-side AI error occurred.${retryText}`;
+    return {
+      title: error?.code === 'AI_KEYS_MISSING' ? 'AI keys missing' : 'AI service-side error',
+      meaning: 'The backend could not complete the AI response. Provider/key details are logged on the server.',
+      likelyCause: 'Missing keys, invalid keys, provider outage, or provider configuration issue.',
+      nextStep: 'Check backend logs for [AI Engine] and [Chat AI Service Error].',
+      userMessage: error.message || `A service-side AI error occurred.${retryText}`
+    };
   }
 
   if (error?.status === 429) {
-    return error.message || `This chatbot is receiving too many messages right now.${retryText}`;
+    return {
+      title: 'Generic rate limit reached',
+      meaning: 'The backend returned 429 without a more specific code.',
+      likelyCause: 'A rate limit was hit before the request reached the expected handler.',
+      nextStep: `Wait ${error.retryAfterSeconds || 60} seconds, then inspect the Network response body.`,
+      userMessage: error.message || `This chatbot is receiving too many messages right now.${retryText}`
+    };
   }
 
-  return error?.message || 'The chatbot could not answer right now.';
+  return {
+    title: 'Chat request failed',
+    meaning: 'The chat request failed before a normal AI response was returned.',
+    likelyCause: 'Network, domain authorization, validation, or backend error.',
+    nextStep: 'Open DevTools Network and inspect the /api/chat response body.',
+    userMessage: error?.message || 'The chatbot could not answer right now.'
+  };
+};
+
+const logChatError = (error) => {
+  const diagnostics = getChatErrorDiagnostics(error);
+  const summary = {
+    status: error?.status || 'unknown',
+    code: error?.code || 'NO_CODE',
+    meaning: diagnostics.meaning,
+    likelyCause: diagnostics.likelyCause,
+    nextStep: diagnostics.nextStep,
+    endpoint: error?.endpoint,
+    url: error?.url,
+    botLimit: error?.limit && error?.windowSeconds
+      ? `${error.limit} messages / ${error.windowSeconds} seconds`
+      : undefined,
+    retryAfterSeconds: error?.retryAfterSeconds,
+    resetAt: error?.resetAt,
+    userMessage: diagnostics.userMessage
+  };
+
+  console.groupCollapsed(`[Darpan360 Chat] ${summary.code} - ${diagnostics.title}`);
+  console.table(summary);
+  if (error?.responseBody) {
+    console.info('[Darpan360 Chat] API response body:', error.responseBody);
+  }
+  console.error('[Darpan360 Chat] Raw error:', error);
+  console.groupEnd();
 };
 
 const postWidgetConfig = (botId, config) => {
@@ -143,7 +214,7 @@ const HostedChat = () => {
         }
 
       } catch (error) {
-        console.error("Failed to load bot:", error);
+        logChatError(error);
         setIsUnavailable(true);
         setMessages([{ role: 'model', content: error.message || "This chatbot is not available from this website." }]);
       } finally {
@@ -192,13 +263,7 @@ const HostedChat = () => {
 
       setMessages(prev => [...prev, { role: 'model', content: data.response }]);
     } catch (error) {
-      console.error("Chat response error:", {
-        code: error.code,
-        status: error.status,
-        limit: error.limit,
-        retryAfterSeconds: error.retryAfterSeconds,
-        message: error.message
-      });
+      logChatError(error);
       setMessages(prev => [...prev, { role: 'model', content: getChatFailureMessage(error) }]);
     } finally {
       setIsTyping(false);

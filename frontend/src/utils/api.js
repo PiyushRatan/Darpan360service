@@ -51,6 +51,9 @@ export const apiFetch = async (endpoint, options = {}) => {
     error.windowSeconds = data.windowSeconds;
     error.retryAfterSeconds = data.retryAfterSeconds;
     error.resetAt = data.resetAt;
+    error.endpoint = endpoint;
+    error.url = response.url;
+    error.responseBody = data;
     throw error;
   }
 
